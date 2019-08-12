@@ -270,7 +270,7 @@ public class EndToEndTest {
   }
 
   @Test
-  public void shouldAllowPassthroughForW3CMode() {
+  public void shouldAllowPassthroughForW3CMode() throws IOException {
     HttpRequest request = new HttpRequest(POST, "/session");
     request.setContent(utf8String(json.toJson(
         ImmutableMap.of(
@@ -296,7 +296,7 @@ public class EndToEndTest {
   }
 
   @Test
-  public void shouldAllowPassthroughForJWPMode() {
+  public void shouldAllowPassthroughForJWPMode() throws IOException {
     HttpRequest request = new HttpRequest(POST, "/session");
     request.setContent(utf8String(json.toJson(
         ImmutableMap.of(

@@ -63,7 +63,7 @@ public class NewRequestCrashesDuringNewSessionTest {
    * state
    */
   @Test(timeout = 1000)
-  public void requestIsRemovedFromTheQueueAfterItCrashes() {
+  public void requestIsremovedFromTheQeueAfterItcrashes() {
 //    // should work
 //    try {
 //      SeleniumBasedRequest newSession = GridHelper.createNewSessionRequest(registry, ff);

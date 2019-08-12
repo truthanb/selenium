@@ -67,7 +67,7 @@ class HtmlDialog : public DocumentHost, public IDispEventSimpleImpl<1, HtmlDialo
   void SetWidth(long width);
   void SetHeight(long height);
 
-  int NavigateToUrl(const std::string& url, std::string* error_message);
+  int NavigateToUrl(const std::string& url);
   int NavigateBack(void);
   int NavigateForward(void);
   int Refresh(void);

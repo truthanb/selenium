@@ -1,4 +1,4 @@
-// <copyright file="PauseInteraction.cs" company="WebDriver Committers">
+﻿// <copyright file="PauseInteraction.cs" company="WebDriver Committers">
 // Licensed to the Software Freedom Conservancy (SFC) under one
 // or more contributor license agreements. See the NOTICE file
 // distributed with this work for additional information
@@ -18,7 +18,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Text;
 
@@ -79,11 +78,6 @@ namespace OpenQA.Selenium.Interactions
         public override bool IsValidFor(InputDeviceKind sourceDeviceKind)
         {
             return true;
-        }
-
-        public override string ToString()
-        {
-            return string.Format(CultureInfo.InvariantCulture, "Pause [duration: {0} ms]", this.duration.TotalMilliseconds);
         }
     }
 }
