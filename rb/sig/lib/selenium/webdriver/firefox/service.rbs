@@ -1,0 +1,20 @@
+module Selenium
+  module WebDriver
+    module Firefox
+      class Service < WebDriver::Service
+        DEFAULT_PORT: 4444
+
+        DRIVER_PATH_ENV_KEY: String
+        EXECUTABLE: "geckodriver"
+
+        SHUTDOWN_SUPPORTED: false
+
+        def initialize: (?path: String?, ?port: Integer?, ?log: untyped?, ?args: Array[String]?) -> void
+
+        private
+
+        def remove_log_args: (Array[String] args) -> void
+      end
+    end
+  end
+end

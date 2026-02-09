@@ -75,6 +75,13 @@ module Selenium
         subtract: "\ue027",
         decimal: "\ue028",
         divide: "\ue029",
+        numpad_multiply: "\ue024",
+        numpad_add: "\ue025",
+        numpad_comma: "\ue026",
+        numpad_subtract: "\ue027",
+        numpad_decimal: "\ue028",
+        numpad_divide: "\ue029",
+        numpad_enter: "\ue007",
         f1: "\ue031",
         f2: "\ue032",
         f3: "\ue033",
@@ -90,10 +97,13 @@ module Selenium
         meta: "\ue03D",
         command: "\ue03D", # alias
         left_meta: "\ue03D", # alias
+        zenkaku_hankaku: "\uE040",
         right_shift: "\ue050",
         right_control: "\ue051",
         right_alt: "\ue052",
         right_meta: "\ue053",
+        options: "\ue052",
+        function: "\ue051", # macOS Function key, same as right_control
         numpad_page_up: "\ue054",
         numpad_page_down: "\ue055",
         numpad_end: "\ue056",

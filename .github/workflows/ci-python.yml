@@ -1,0 +1,70 @@
+name: CI - Python
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    uses: ./.github/workflows/bazel.yml
+    with:
+      name: Build
+      run: |
+        bazel build //py:selenium-wheel //py:selenium-sdist
+
+  lint:
+    name: Lint
+    uses: ./.github/workflows/bazel.yml
+    with:
+      name: Lint
+      run: ./go py:lint
+
+  unit-tests:
+    name: Unit Tests
+    needs: build
+    uses: ./.github/workflows/bazel.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.14']
+        os: [ubuntu, macos, windows]
+    with:
+      name: Unit Tests (${{ matrix.python-version }}, ${{ matrix.os }})
+      os: ${{ matrix.os }}
+      python-version: ${{ matrix.python-version }}
+      run: bazel test --local_test_jobs 1 //py:unit
+
+  remote-tests:
+    name: Remote Tests
+    needs: build
+    uses: ./.github/workflows/bazel.yml
+    with:
+      name: Integration Tests Remote
+      browser: yes
+      rerun-with-debug: true
+      run: |
+        bazel test --local_test_jobs 1 --flaky_test_attempts 3 //py:test-remote
+
+  browser-tests:
+    name: Browser Tests
+    needs: build
+    uses: ./.github/workflows/bazel.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox, chrome-bidi, edge]
+        os: [windows]
+        include:
+          - browser: safari
+            os: macos
+    with:
+      name: Integration Tests (${{ matrix.browser }})
+      browser: ${{ matrix.browser }}
+      os: ${{ matrix.os }}
+      rerun-with-debug: true
+      run: |
+        bazel test --local_test_jobs 1 --flaky_test_attempts 3 //py:test-${{ matrix.browser }}

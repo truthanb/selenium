@@ -20,7 +20,6 @@
 module Selenium
   module WebDriver
     module Error
-
       #
       # Returns exception from its string representation.
       # @param [String, nil] error
@@ -29,13 +28,34 @@ module Selenium
       def self.for_error(error)
         return if error.nil?
 
-        klass_name = error.split(' ').map(&:capitalize).join.sub(/Error$/, '')
-        const_get("#{klass_name}Error", false)
+        klass_name = error.split.map(&:capitalize).join.sub(/Error$/, '')
+        const_get(:"#{klass_name}Error", false)
       rescue NameError
         WebDriverError
       end
 
-      class WebDriverError < StandardError; end
+      SUPPORT_MSG = 'For documentation on this error, please visit:'
+      ERROR_URL = 'https://www.selenium.dev/documentation/webdriver/troubleshooting/errors'
+
+      URLS = {
+        NoSuchElementError: "#{ERROR_URL}#nosuchelementexception",
+        StaleElementReferenceError: "#{ERROR_URL}#staleelementreferenceexception",
+        InvalidSelectorError: "#{ERROR_URL}#invalidselectorexception",
+        NoSuchDriverError: "#{ERROR_URL}/driver_location"
+      }.freeze
+
+      class WebDriverError < StandardError
+        def initialize(msg = '')
+          # Remove this conditional when all the error pages have been documented
+          super(URLS[class_name] ? "#{msg}; #{SUPPORT_MSG} #{URLS[class_name]}" : msg)
+        end
+
+        # steep:ignore:start
+        def class_name
+          self.class.name.split('::')&.last&.to_sym
+        end
+        # steep:ignore:end
+      end
 
       #
       # An element could not be located on the page using the given search parameters.
@@ -60,6 +80,12 @@ module Selenium
       #
 
       class StaleElementReferenceError < WebDriverError; end
+
+      #
+      # A command failed because the referenced shadow root is no longer attached to the DOM.
+      #
+
+      class DetachedShadowRootError < WebDriverError; end
 
       #
       # The target element is in an invalid state, rendering it impossible to interact with, for
@@ -92,6 +118,19 @@ module Selenium
       #
 
       class NoSuchWindowError < WebDriverError; end
+
+      #
+      # A command to find a devtools target could not be satisfied because
+      # the target could not be found.
+      #
+
+      class NoSuchTargetError < WebDriverError; end
+
+      #
+      # The element does not have a shadow root.
+      #
+
+      class NoSuchShadowRootError < WebDriverError; end
 
       #
       # An illegal attempt was made to set a cookie under a different domain than the current page.
@@ -202,6 +241,11 @@ module Selenium
 
       class UnsupportedOperationError < WebDriverError; end
 
+      #
+      # Indicates that driver was not specified and could not be located.
+      #
+
+      class NoSuchDriverError < WebDriverError; end
     end # Error
   end # WebDriver
 end # Selenium

@@ -1,5 +1,5 @@
-load("@io_bazel_rules_closure//closure:defs.bzl", "closure_js_deps", "closure_js_library")
-load("//javascript:rules.bzl", "closure_test_suite")
+load("@rules_closure//closure:defs.bzl", "closure_js_library")
+load("//javascript:defs.bzl", "closure_js_deps", "closure_test_suite")
 
 closure_js_library(
     name = "http",
@@ -15,17 +15,20 @@ closure_js_library(
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
         "JSC_MISSING_CONST_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
     ],
     visibility = ["//javascript/remote:__pkg__"],
     deps = [
         "//javascript/atoms:errors",
-        "@io_bazel_rules_closure//closure/library",
     ],
 )
 
 closure_js_library(
     name = "key",
     srcs = ["key.js"],
+    suppress = [
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
     visibility = ["//javascript:__subpackages__"],
 )
 
@@ -33,8 +36,11 @@ closure_js_library(
     name = "all_js_for_testing",
     testonly = 1,
     srcs = glob(["**/*.js"]),
+    suppress = [
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
     visibility = ["//javascript:__pkg__"],
-    deps = ["@io_bazel_rules_closure//closure/library"],
+    deps = [],
 )
 
 filegroup(
@@ -43,7 +49,6 @@ filegroup(
     srcs = glob(
         ["**/*"],
         exclude = [
-            "BUCK",
             "build.desc",
         ],
     ),
@@ -59,10 +64,11 @@ closure_js_deps(
 )
 
 closure_test_suite(
-    name = "test",
+    name = "closure-test",
     data = [
         ":all_files",
         ":deps",
         "//javascript/atoms:deps",
+        "//javascript/webdriver/atoms/inject:deps",
     ],
 )

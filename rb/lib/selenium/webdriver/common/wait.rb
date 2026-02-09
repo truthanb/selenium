@@ -29,7 +29,7 @@ module Selenium
       # @param [Hash] opts Options for this instance
       # @option opts [Numeric] :timeout (5) Seconds to wait before timing out.
       # @option opts [Numeric] :interval (0.2) Seconds to sleep between polls.
-      # @option opts [String] :message Exception mesage if timed out.
+      # @option opts [String] :message Exception message if timed out.
       # @option opts [Array, Exception] :ignore Exceptions to ignore while polling (default: Error::NoSuchElementError)
       #
 
@@ -37,7 +37,8 @@ module Selenium
         @timeout  = opts.fetch(:timeout, DEFAULT_TIMEOUT)
         @interval = opts.fetch(:interval, DEFAULT_INTERVAL)
         @message  = opts[:message]
-        @ignored  = Array(opts[:ignore] || Error::NoSuchElementError)
+        @message_provider = opts[:message_provider]
+        @ignored = Array(opts[:ignore] || Error::NoSuchElementError)
       end
 
       #
@@ -64,8 +65,10 @@ module Selenium
 
         msg = if @message
                 @message.dup
+              elsif @message_provider
+                @message_provider.call
               else
-                +"timed out after #{@timeout} seconds"
+                "timed out after #{@timeout} seconds"
               end
 
         msg << " (#{last_error.message})" if last_error

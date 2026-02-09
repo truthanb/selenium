@@ -21,123 +21,100 @@ require_relative 'spec_helper'
 
 module Selenium
   module WebDriver
-    describe Driver do
-      it_behaves_like 'driver that can be started concurrently', except: [{browser: :edge},
-                                                                          {browser: :safari},
-                                                                          {browser: :safari_preview}]
+    describe Driver, exclusive: {bidi: false, reason: 'Not yet implemented with BiDi'} do
+      after { reset_driver! if GlobalTestEnv.rbe? && GlobalTestEnv.browser == :chrome }
 
-      it 'should get the page title' do
+      it_behaves_like 'driver that can be started concurrently', exclude: [
+        {browser: %i[safari safari_preview]},
+        {browser: :firefox, reason: 'https://github.com/SeleniumHQ/selenium/issues/15451'},
+        {driver: :remote, rbe: true, reason: 'Cannot start 2+ drivers at once.'}
+      ]
+
+      it 'creates default capabilities', exclude: {browser: %i[safari safari_preview]} do
+        reset_driver! do |driver|
+          caps = driver.capabilities
+          expect(caps.proxy).to be_nil
+          expect(caps.browser_version).to match(/^\d\d\d?\./)
+          expect(caps.platform_name).not_to be_nil
+
+          expect(caps.accept_insecure_certs).to eq(caps.browser_name == 'firefox')
+          expect(caps.page_load_strategy).to eq 'normal'
+          expect(caps.implicit_timeout).to be_zero
+          expect(caps.page_load_timeout).to eq 300000
+          expect(caps.script_timeout).to eq 30000
+        end
+      end
+
+      it 'gets driver status' do
+        status = driver.status
+        expect(status).to include('ready', 'message')
+      end
+
+      it 'gets the page title' do
         driver.navigate.to url_for('xhtmlTest.html')
         expect(driver.title).to eq('XHTML Test Page')
       end
 
-      it 'should get the page source' do
+      it 'gets the page source' do
         driver.navigate.to url_for('xhtmlTest.html')
         expect(driver.page_source).to match(%r{<title>XHTML Test Page</title>}i)
       end
 
-      it 'should refresh the page' do
+      it 'refreshes the page' do
         driver.navigate.to url_for('javascriptPage.html')
-        sleep 1 # javascript takes too long to load
-        driver.find_element(id: 'updatediv').click
+        short_wait { driver.find_element(id: 'updatediv') }.click
         expect(driver.find_element(id: 'dynamo').text).to eq('Fish and chips!')
         driver.navigate.refresh
         wait_for_element(id: 'dynamo')
         expect(driver.find_element(id: 'dynamo').text).to eq("What's for dinner?")
       end
 
-      context 'screenshots' do
-        it 'should save' do
-          driver.navigate.to url_for('xhtmlTest.html')
-          path = "#{Dir.tmpdir}/test#{SecureRandom.urlsafe_base64}.png"
-
-          save_screenshot_and_assert(path)
-        end
-
-        it 'should warn if extension of provided path is not png' do
-          driver.navigate.to url_for('xhtmlTest.html')
-          path = "#{Dir.tmpdir}/test#{SecureRandom.urlsafe_base64}.jpg"
-          message = "name used for saved screenshot does not match file type. "\
-                    "It should end with .png extension"
-          expect(WebDriver.logger).to receive(:warn).with(message)
-
-          save_screenshot_and_assert(path)
-        end
-
-        it 'should not warn if extension of provided path is png' do
-          driver.navigate.to url_for('xhtmlTest.html')
-          path = "#{Dir.tmpdir}/test#{SecureRandom.urlsafe_base64}.PNG"
-          expect(WebDriver.logger).not_to receive(:warn)
-
-          save_screenshot_and_assert(path)
-        end
-
-        it 'should return in the specified format' do
-          driver.navigate.to url_for('xhtmlTest.html')
-
-          ss = driver.screenshot_as(:png)
-          expect(ss).to be_kind_of(String)
-          expect(ss.size).to be_positive
-        end
-
-        it 'raises an error when given an unknown format' do
-          expect { driver.screenshot_as(:jpeg) }.to raise_error(WebDriver::Error::UnsupportedOperationError)
-        end
-
-        def save_screenshot_and_assert(path)
-          driver.save_screenshot path
-          expect(File.exist?(path)).to be true
-          expect(File.size(path)).to be_positive
-        ensure
-          File.delete(path) if File.exist?(path)
-        end
-      end
-
       describe 'one element' do
-        it 'should find by id' do
+        it 'finds by id' do
           driver.navigate.to url_for('xhtmlTest.html')
           element = driver.find_element(id: 'id1')
-          expect(element).to be_kind_of(WebDriver::Element)
+          expect(element).to be_a(WebDriver::Element)
           expect(element.text).to eq('Foo')
         end
 
-        it 'should find by field name' do
+        it 'finds by field name' do
           driver.navigate.to url_for('formPage.html')
           expect(driver.find_element(name: 'x').attribute('value')).to eq('name')
         end
 
-        it 'should find by class name' do # rubocop:disable RSpec/RepeatedExample
+        it 'finds by class name' do
           driver.navigate.to url_for('xhtmlTest.html')
           expect(driver.find_element(class: 'header').text).to eq('XHTML Might Be The Future')
         end
 
-        # TODO: Rewrite this test so it's not a duplicate of above or remove
-        it 'should find elements with a hash selector' do # rubocop:disable RSpec/RepeatedExample
-          driver.navigate.to url_for('xhtmlTest.html')
-          expect(driver.find_element(class: 'header').text).to eq('XHTML Might Be The Future')
-        end
-
-        it 'should find by link text' do
+        it 'finds by link text' do
           driver.navigate.to url_for('xhtmlTest.html')
           expect(driver.find_element(link: 'Foo').text).to eq('Foo')
         end
 
-        it 'should find by xpath' do
+        it 'finds by xpath' do
           driver.navigate.to url_for('xhtmlTest.html')
           expect(driver.find_element(xpath: '//h1').text).to eq('XHTML Might Be The Future')
         end
 
-        it 'should find by css selector' do
+        it 'finds by css selector' do
           driver.navigate.to url_for('xhtmlTest.html')
           expect(driver.find_element(css: 'div.content').attribute('class')).to eq('content')
         end
 
-        it 'should find by tag name' do
+        it 'finds by tag name' do
           driver.navigate.to url_for('xhtmlTest.html')
           expect(driver.find_element(tag_name: 'div').attribute('class')).to eq('navigation')
         end
 
-        it 'should find child element' do
+        it 'finds above another' do
+          driver.navigate.to url_for('relative_locators.html')
+
+          above = driver.find_element(relative: {tag_name: 'td', above: {id: 'center'}})
+          expect(above.attribute('id')).to eq('top')
+        end
+
+        it 'finds child element' do
           driver.navigate.to url_for('nestedElements.html')
 
           element = driver.find_element(name: 'form2')
@@ -146,7 +123,7 @@ module Selenium
           expect(child.attribute('id')).to eq('2')
         end
 
-        it 'should find child element by tag name' do
+        it 'finds child element by tag name' do
           driver.navigate.to url_for('nestedElements.html')
 
           element = driver.find_element(name: 'form2')
@@ -155,26 +132,107 @@ module Selenium
           expect(child.attribute('id')).to eq('2')
         end
 
-        it 'should find elements with the shortcut syntax' do
+        it 'finds elements with the shortcut syntax' do
           driver.navigate.to url_for('xhtmlTest.html')
 
-          expect(driver[:id1]).to be_kind_of(WebDriver::Element)
-          expect(driver[xpath: '//h1']).to be_kind_of(WebDriver::Element)
+          expect(driver[:id1]).to be_a(WebDriver::Element)
+          expect(driver[xpath: '//h1']).to be_a(WebDriver::Element)
+        end
+
+        it 'raises if element not found' do
+          driver.navigate.to url_for('xhtmlTest.html')
+          expect {
+            driver.find_element(id: 'not-there')
+          }.to raise_error(Error::NoSuchElementError, /errors#nosuchelementexception/)
+        end
+
+        it 'raises if invalid locator',
+           exclude: {browser: %i[safari safari_preview], reason: 'Safari TimeoutError'} do
+          driver.navigate.to url_for('xhtmlTest.html')
+          expect {
+            driver.find_element(xpath: '*?//-')
+          }.to raise_error(Error::InvalidSelectorError, /errors#invalidselectorexception/)
         end
       end
 
       describe 'many elements' do
-        it 'should find by class name' do
+        it 'finds by class name' do
           driver.navigate.to url_for('xhtmlTest.html')
           expect(driver.find_elements(class: 'nameC').size).to eq(2)
         end
 
-        it 'should find by css selector' do
+        it 'finds by css selector' do
           driver.navigate.to url_for('xhtmlTest.html')
-          driver.find_elements(css: 'p')
+          expect(driver.find_elements(css: 'p').size).to be_positive
         end
 
-        it 'should find children by field name' do
+        it 'finds above element' do
+          driver.navigate.to url_for('relative_locators.html')
+
+          lowest = driver.find_element(id: 'below')
+          above = driver.find_elements(relative: {tag_name: 'p', above: lowest})
+          expect(above.map { |e| e.attribute('id') }).to eq(%w[mid above])
+        end
+
+        it 'finds above another' do
+          driver.navigate.to url_for('relative_locators.html')
+
+          above = driver.find_elements(relative: {css: 'td', above: {id: 'center'}})
+          expect(above.map { |e| e.attribute('id') }).to eq(%w[top topLeft topRight])
+        end
+
+        it 'finds below element' do
+          driver.navigate.to url_for('relative_locators.html')
+
+          midpoint = driver.find_element(id: 'mid')
+          above = driver.find_elements(relative: {id: 'below', below: midpoint})
+          expect(above.map { |e| e.attribute('id') }).to eq(['below'])
+        end
+
+        it 'finds near another within default distance' do
+          driver.navigate.to url_for('relative_locators.html')
+
+          near = driver.find_elements(relative: {tag_name: 'td', near: {id: 'right'}})
+          expect(near.map { |e| e.attribute('id') }).to eq(%w[topRight bottomRight center top bottom])
+        end
+
+        it 'finds near another within custom distance', except: {browser: %i[safari safari_preview]} do
+          driver.navigate.to url_for('relative_locators.html')
+
+          near = driver.find_elements(relative: {tag_name: 'td', near: {id: 'right', distance: 100}})
+          expect(near.map { |e| e.attribute('id') }).to eq(%w[topRight bottomRight center top bottom])
+        end
+
+        it 'finds to the left of another' do
+          driver.navigate.to url_for('relative_locators.html')
+
+          left = driver.find_elements(relative: {tag_name: 'td', left: {id: 'center'}})
+          expect(left.map { |e| e.attribute('id') }).to eq(%w[left topLeft bottomLeft])
+        end
+
+        it 'finds to the right of another' do
+          driver.navigate.to url_for('relative_locators.html')
+
+          right = driver.find_elements(relative: {tag_name: 'td', right: {id: 'center'}})
+          expect(right.map { |e| e.attribute('id') }).to eq(%w[right topRight bottomRight])
+        end
+
+        it 'finds by combined relative locators' do
+          driver.navigate.to url_for('relative_locators.html')
+
+          found = driver.find_elements(relative: {tag_name: 'td', right: {id: 'top'}, above: {id: 'center'}})
+          expect(found.map { |e| e.attribute('id') }).to eq(['topRight'])
+        end
+
+        it 'finds all by empty relative locator' do
+          driver.navigate.to url_for('relative_locators.html')
+
+          expected = driver.find_elements(tag_name: 'p')
+          actual = driver.find_elements(relative: {tag_name: 'p'})
+          expect(actual).to eq(expected)
+        end
+
+        it 'finds children by field name' do
           driver.navigate.to url_for('nestedElements.html')
           element = driver.find_element(name: 'form2')
           children = element.find_elements(name: 'selectomatic')
@@ -182,25 +240,25 @@ module Selenium
         end
       end
 
-      describe 'execute script' do
-        it 'should return strings' do
+      describe '#execute_script' do
+        it 'returns strings' do
           driver.navigate.to url_for('xhtmlTest.html')
           expect(driver.execute_script('return document.title;')).to eq('XHTML Test Page')
         end
 
-        it 'should return numbers' do
+        it 'returns numbers' do
           driver.navigate.to url_for('xhtmlTest.html')
           expect(driver.execute_script('return document.title.length;')).to eq(15)
         end
 
-        it 'should return elements' do
+        it 'returns elements' do
           driver.navigate.to url_for('xhtmlTest.html')
           element = driver.execute_script("return document.getElementById('id1');")
-          expect(element).to be_kind_of(WebDriver::Element)
+          expect(element).to be_a(WebDriver::Element)
           expect(element.text).to eq('Foo')
         end
 
-        it 'should unwrap elements in deep objects' do
+        it 'unwraps elements in deep objects' do
           driver.navigate.to url_for('xhtmlTest.html')
           result = driver.execute_script(<<~SCRIPT)
             var e1 = document.getElementById('id1');
@@ -211,58 +269,60 @@ module Selenium
             };
           SCRIPT
 
-          expect(result).to be_kind_of(Hash)
-          expect(result['elements']['body']).to be_kind_of(WebDriver::Element)
-          expect(result['elements']['other'].first).to be_kind_of(WebDriver::Element)
+          expect(result).to be_a(Hash)
+          expect(result['elements']['body']).to be_a(WebDriver::Element)
+          expect(result['elements']['other'].first).to be_a(WebDriver::Element)
         end
 
-        it 'should return booleans' do
+        it 'returns booleans' do
           driver.navigate.to url_for('xhtmlTest.html')
-          expect(driver.execute_script('return true;')).to eq(true)
+          expect(driver.execute_script('return true;')).to be(true)
         end
 
-        it 'should raise if the script is bad', except: {browser: %i[edge]} do
+        it 'raises if the script is bad' do
           driver.navigate.to url_for('xhtmlTest.html')
-          expect { driver.execute_script('return squiggle();') }.to raise_error(Selenium::WebDriver::Error::JavascriptError)
+          expect {
+            driver.execute_script('return squiggle();')
+          }.to raise_error(Selenium::WebDriver::Error::JavascriptError)
         end
 
-        it 'should return arrays' do
+        it 'returns arrays' do
           driver.navigate.to url_for('xhtmlTest.html')
           expect(driver.execute_script('return ["zero", "one", "two"];')).to eq(%w[zero one two])
         end
 
-        it 'should be able to call functions on the page' do
+        it 'is able to call functions on the page' do
           driver.navigate.to url_for('javascriptPage.html')
           driver.execute_script("displayMessage('I like cheese');")
           expect(driver.find_element(id: 'result').text.strip).to eq('I like cheese')
         end
 
-        it 'should be able to pass string arguments' do
+        it 'is able to pass string arguments' do
           driver.navigate.to url_for('javascriptPage.html')
           expect(driver.execute_script("return arguments[0] == 'fish' ? 'fish' : 'not fish';", 'fish')).to eq('fish')
         end
 
-        it 'should be able to pass boolean arguments' do
+        it 'is able to pass boolean arguments' do
           driver.navigate.to url_for('javascriptPage.html')
-          expect(driver.execute_script('return arguments[0] == true;', true)).to eq(true)
+          expect(driver.execute_script('return arguments[0] == true;', true)).to be(true)
         end
 
-        it 'should be able to pass numeric arguments' do
+        it 'is able to pass numeric arguments' do
           driver.navigate.to url_for('javascriptPage.html')
           expect(driver.execute_script('return arguments[0] == 1 ? 1 : 0;', 1)).to eq(1)
         end
 
-        it 'should be able to pass null arguments' do
+        it 'is able to pass null arguments' do
           driver.navigate.to url_for('javascriptPage.html')
-          expect(driver.execute_script('return arguments[0];', nil)).to eq(nil)
+          expect(driver.execute_script('return arguments[0];', nil)).to be_nil
         end
 
-        it 'should be able to pass array arguments' do
+        it 'is able to pass array arguments' do
           driver.navigate.to url_for('javascriptPage.html')
           expect(driver.execute_script('return arguments[0];', [1, '2', 3])).to eq([1, '2', 3])
         end
 
-        it 'should be able to pass element arguments' do
+        it 'is able to pass element arguments' do
           driver.navigate.to url_for('javascriptPage.html')
           button = driver.find_element(id: 'plainButton')
           js = "arguments[0]['flibble'] = arguments[0].getAttribute('id'); return arguments[0]['flibble'];"
@@ -270,7 +330,7 @@ module Selenium
             .to eq('plainButton')
         end
 
-        it 'should be able to pass in multiple arguments' do
+        it 'is able to pass in multiple arguments' do
           driver.navigate.to url_for('javascriptPage.html')
           expect(driver.execute_script('return arguments[0] + arguments[1];', 'one', 'two')).to eq('onetwo')
         end
@@ -278,23 +338,22 @@ module Selenium
 
       describe 'execute async script' do
         before do
-          driver.manage.timeouts.script_timeout = 1
+          driver.manage.timeouts.script = 1
           driver.navigate.to url_for('ajaxy_page.html')
         end
 
-        it 'should be able to return arrays of primitives from async scripts' do
+        it 'is able to return arrays of primitives from async scripts' do
           result = driver.execute_async_script "arguments[arguments.length - 1]([null, 123, 'abc', true, false]);"
           expect(result).to eq([nil, 123, 'abc', true, false])
         end
 
-        it 'should be able to pass multiple arguments to async scripts' do
+        it 'is able to pass multiple arguments to async scripts' do
           result = driver.execute_async_script 'arguments[arguments.length - 1](arguments[0] + arguments[1]);', 1, 2
           expect(result).to eq(3)
         end
 
-        # Edge BUG - https://connect.microsoft.com/IE/feedback/details/1849991/
         # Safari raises TimeoutError instead
-        it 'times out if the callback is not invoked', except: {browser: %i[edge safari safari_preview]} do
+        it 'times out if the callback is not invoked', except: {browser: %i[safari safari_preview]} do
           expect {
             # Script is expected to be async and explicitly callback, so this should timeout.
             driver.execute_async_script 'return 1 + 2;'

@@ -1,5 +1,5 @@
-load("@io_bazel_rules_closure//closure:defs.bzl", "closure_js_deps", "closure_js_library")
-load("//javascript:rules.bzl", "closure_test_suite")
+load("@rules_closure//closure:defs.bzl", "closure_js_library")
+load("//javascript:defs.bzl", "closure_js_deps", "closure_test_suite")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -13,8 +13,9 @@ filegroup(
         "**/*.svg",
     ]),
     visibility = [
-        "//java/client/test/org/openqa/selenium/environment:__pkg__",
-        "//javascript/node/selenium-webdriver:__pkg__",
+        "//dotnet/test:__subpackages__",
+        "//java/test/org/openqa/selenium/environment:__pkg__",
+        "//javascript/selenium-webdriver:__pkg__",
     ],
 )
 
@@ -25,6 +26,13 @@ closure_js_library(
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
         "JSC_STRICT_INEXISTENT_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
+    visibility = [
+        "//javascript/atoms/fragments:__pkg__",
+        "//javascript/selenium-atoms:__pkg__",
+        "//javascript/webdriver/atoms:__pkg__",
+        "//javascript/webdriver/atoms/inject:__pkg__",
     ],
     deps = [
         ":bot",
@@ -32,20 +40,34 @@ closure_js_library(
         ":dom",
         ":errors",
         ":events",
-        "@io_bazel_rules_closure//closure/library",
+        "//third_party/closure/goog/array",
+        "//third_party/closure/goog/dom:tagname",
+        "//third_party/closure/goog/math:coordinate",
+        "//third_party/closure/goog/math:vec2",
+        "//third_party/closure/goog/style",
+        "//third_party/closure/goog/useragent",
+        "//third_party/closure/goog/useragent:product",
+        "//third_party/closure/goog/utils",
     ],
 )
 
 closure_js_library(
     name = "bot",
     srcs = ["bot.js"],
+    suppress = [
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
 )
 
 closure_js_library(
     name = "color",
     srcs = ["color.js"],
+    suppress = [
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
     deps = [
-        "@io_bazel_rules_closure//closure/library",
+        "//third_party/closure/goog/array",
+        "//third_party/closure/goog/color:names",
     ],
 )
 
@@ -59,10 +81,9 @@ closure_js_library(
     ],
     suppress = [
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
-        "JSC_MISSING_CONST_PROPERTY",
-        "JSC_NULLABLE_RETURN_WITH_NAME",
         "JSC_STRICT_INEXISTENT_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
     ],
     deps = [
         ":bot",
@@ -71,7 +92,16 @@ closure_js_library(
         ":events",
         ":locators",
         ":useragent",
-        "@io_bazel_rules_closure//closure/library",
+        "//third_party/closure/goog/array",
+        "//third_party/closure/goog/dom",
+        "//third_party/closure/goog/dom:selection",
+        "//third_party/closure/goog/dom:tagname",
+        "//third_party/closure/goog/math:coordinate",
+        "//third_party/closure/goog/structs:map",
+        "//third_party/closure/goog/structs:set",
+        "//third_party/closure/goog/useragent",
+        "//third_party/closure/goog/useragent:product",
+        "//third_party/closure/goog/utils",
     ],
 )
 
@@ -82,11 +112,15 @@ closure_js_library(
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
         "JSC_STRICT_INEXISTENT_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
     ],
     deps = [
         ":errors",
         ":useragent",
-        "@io_bazel_rules_closure//closure/library",
+        "//third_party/closure/goog/array",
+        "//third_party/closure/goog/dom",
+        "//third_party/closure/goog/dom:nodetype",
+        "//third_party/closure/goog/dom:tagname",
     ],
 )
 
@@ -98,15 +132,25 @@ closure_js_library(
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
         "JSC_STRICT_INEXISTENT_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
     ],
     deps = [
         ":bot",
         ":color",
+        ":css",
         ":domcore",
         ":json",
         ":useragent",
-        ":xpath",
-        "@io_bazel_rules_closure//closure/library",
+        "//third_party/closure/goog/array",
+        "//third_party/closure/goog/dom",
+        "//third_party/closure/goog/dom:nodetype",
+        "//third_party/closure/goog/dom:tagname",
+        "//third_party/closure/goog/math",
+        "//third_party/closure/goog/math:coordinate",
+        "//third_party/closure/goog/math:rect",
+        "//third_party/closure/goog/string",
+        "//third_party/closure/goog/style",
+        "//third_party/closure/goog/useragent",
     ],
 )
 
@@ -118,9 +162,12 @@ closure_js_library(
     ],
     suppress = [
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
-        "JSC_MISSING_CONST_PROPERTY",
         "JSC_STRICT_INEXISTENT_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
+    deps = [
+        "//third_party/closure/goog/utils",
     ],
 )
 
@@ -129,9 +176,9 @@ closure_js_library(
     srcs = ["events.js"],
     suppress = [
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
-        "JSC_MISSING_CONST_PROPERTY",
         "JSC_STRICT_INEXISTENT_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
     ],
     deps = [
         ":bot",
@@ -139,19 +186,52 @@ closure_js_library(
         ":errors",
         ":json",
         ":useragent",
-        "@io_bazel_rules_closure//closure/library",
+        "//third_party/closure/goog/array",
+        "//third_party/closure/goog/dom",
+        "//third_party/closure/goog/events:browserevent",
+        "//third_party/closure/goog/style",
+        "//third_party/closure/goog/useragent",
+        "//third_party/closure/goog/useragent:product",
+        "//third_party/closure/goog/utils",
+    ],
+)
+
+closure_js_library(
+    name = "frame",
+    srcs = ["frame.js"],
+    suppress = [
+        "JSC_IMPLICITLY_NULLABLE_JSDOC",
+        "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
+    visibility = [
+        "//javascript/webdriver/atoms/inject:__pkg__",
+    ],
+    deps = [
+        ":bot",
+        ":dom",
+        ":errors",
+        ":locators",
+        "//third_party/closure/goog/dom",
+        "//third_party/closure/goog/dom:tagname",
     ],
 )
 
 closure_js_library(
     name = "html5",
     srcs = glob(["html5/*.js"]),
+    suppress = [
+        "JSC_IMPLICITLY_NULLABLE_JSDOC",
+        "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
     deps = [
         ":bot",
         ":errors",
         ":json",
         ":useragent",
-        "@io_bazel_rules_closure//closure/library/useragent:all_js",
+        "//third_party/closure/goog/useragent",
+        "//third_party/closure/goog/useragent:product",
     ],
 )
 
@@ -162,21 +242,35 @@ closure_js_library(
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
         "JSC_STRICT_INEXISTENT_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
+    visibility = [
+        "//javascript/atoms/fragments:__pkg__",
+        "//javascript/selenium-atoms:__pkg__",
+        "//javascript/webdriver/atoms/inject:__pkg__",
     ],
     deps = [
         ":bot",
         ":errors",
         ":json",
-        "@io_bazel_rules_closure//closure/library",
+        "//third_party/closure/goog/array",
+        "//third_party/closure/goog/dom:nodetype",
+        "//third_party/closure/goog/object",
+        "//third_party/closure/goog/useragent",
+        "//third_party/closure/goog/utils",
     ],
 )
 
 closure_js_library(
     name = "json",
     srcs = ["json.js"],
+    suppress = [
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
     deps = [
         ":useragent",
-        "@io_bazel_rules_closure//closure/library",
+        "//third_party/closure/goog/json",
+        "//third_party/closure/goog/useragent",
     ],
 )
 
@@ -184,22 +278,30 @@ closure_js_library(
     name = "locators",
     srcs = glob(
         ["locators/*.js"],
-        exclude = ["locators/xpath.js"],
+        exclude = ["locators/css.js"],
     ),
     suppress = [
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
         "JSC_LATE_PROVIDE_ERROR",
-        "JSC_NULLABLE_RETURN_WITH_NAME",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
     ],
     deps = [
         ":bot",
+        ":css",
         ":dom",
         ":errors",
         ":json",
         ":useragent",
-        ":xpath",
-        "@io_bazel_rules_closure//closure/library",
+        "//third_party/closure/goog/array",
+        "//third_party/closure/goog/dom",
+        "//third_party/closure/goog/dom:nodetype",
+        "//third_party/closure/goog/dom:tagname",
+        "//third_party/closure/goog/math:rect",
+        "//third_party/closure/goog/string",
+        "//third_party/closure/goog/useragent",
+        "//third_party/closure/goog/useragent:product",
+        "//third_party/closure/goog/utils",
     ],
 )
 
@@ -209,8 +311,14 @@ closure_js_library(
     suppress = [
         "JSC_STRICT_INEXISTENT_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
     ],
-    deps = ["@io_bazel_rules_closure//closure/library"],
+    deps = [
+        "//third_party/closure/goog/string",
+        "//third_party/closure/goog/useragent",
+        "//third_party/closure/goog/useragent:product",
+        "//third_party/closure/goog/useragent:product_isversion",
+    ],
 )
 
 closure_js_library(
@@ -218,6 +326,9 @@ closure_js_library(
     srcs = [
         "frame.js",
         "window.js",
+    ],
+    suppress = [
+        "JSC_USE_OF_GOOG_PROVIDE",
     ],
     deps = [
         ":bot",
@@ -229,18 +340,22 @@ closure_js_library(
 )
 
 closure_js_library(
-    name = "xpath",
-    srcs = ["locators/xpath.js"],
+    name = "css",
+    srcs = ["locators/css.js"],
     suppress = [
         "JSC_IMPLICITLY_NULLABLE_JSDOC",
         "JSC_STRICT_INEXISTENT_PROPERTY",
         "JSC_UNKNOWN_EXPR_TYPE",
+        "JSC_USE_OF_GOOG_PROVIDE",
     ],
     deps = [
         ":bot",
         ":errors",
-        "//third_party/js/wgxpath",
-        "@io_bazel_rules_closure//closure/library",
+        ":useragent",
+        "//third_party/closure/goog/dom:nodetype",
+        "//third_party/closure/goog/string",
+        "//third_party/closure/goog/useragent",
+        "//third_party/closure/goog/utils",
     ],
 )
 
@@ -248,16 +363,20 @@ closure_js_library(
     name = "test_util",
     testonly = 1,
     srcs = ["test/test_util.js"],
+    suppress = [
+        "JSC_USE_OF_GOOG_PROVIDE",
+    ],
     deps = [
         ":useragent",
-        "@io_bazel_rules_closure//closure/library",
     ],
 )
 
 closure_js_deps(
     name = "deps",
-    testonly = 1,
+    testonly = True,
     visibility = [
+        "//:__pkg__",
+        "//java/test/org/openqa/selenium/environment:__pkg__",
         "//javascript:__pkg__",
         "//javascript/webdriver:__pkg__",
     ],
@@ -265,6 +384,7 @@ closure_js_deps(
         ":action",
         ":bot",
         ":color",
+        ":css",
         ":devices",
         ":dom",
         ":domcore",
@@ -277,12 +397,13 @@ closure_js_deps(
         ":test_util",
         ":useragent",
         ":window",
-        ":xpath",
+        "//third_party/closure/goog:library",
+        "//third_party/closure/goog:testing",
     ],
 )
 
 closure_test_suite(
-    name = "test",
+    name = "closure-test",
     data = [
         ":atoms",
         ":deps",

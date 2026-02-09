@@ -22,43 +22,59 @@ require_relative '../spec_helper'
 module Selenium
   module WebDriver
     module Chrome
-      describe Options, only: {browser: :chrome} do
-        subject(:options) { described_class.new }
-
+      describe Options, exclusive: {browser: :chrome} do
         it 'passes emulated device correctly' do
-          options.add_emulation(device_name: 'Nexus 5')
-
-          create_driver!(options: options) do |driver|
+          reset_driver!(emulation: {device_name: 'Nexus 5'}) do |driver|
             ua = driver.execute_script 'return window.navigator.userAgent'
             expect(ua).to include('Nexus 5')
           end
         end
 
         it 'passes emulated user agent correctly' do
-          options.add_emulation(user_agent: 'foo;bar')
-
-          create_driver!(options: options) do |driver|
+          reset_driver!(emulation: {user_agent: 'foo;bar'}) do |driver|
             ua = driver.execute_script 'return window.navigator.userAgent'
             expect(ua).to eq('foo;bar')
           end
         end
 
         it 'passes args correctly' do
-          options.add_argument('--user-agent=foo;bar')
-
-          create_driver!(options: options) do |driver|
+          reset_driver!(args: ['--user-agent=foo;bar']) do |driver|
             ua = driver.execute_script 'return window.navigator.userAgent'
             expect(ua).to eq('foo;bar')
           end
         end
 
-        it 'should be able to run in headless mode with #headless!' do
-          options.headless!
+        it 'enables bidi', exclusive: {bidi: true, reason: 'bazel does not have dependencies otherwise'} do
+          quit_driver
 
-          create_driver!(options: options) do |driver|
-            ua = driver.execute_script 'return window.navigator.userAgent'
-            expect(ua).to match(/HeadlessChrome/)
-          end
+          options = Selenium::WebDriver::Options.chrome
+          expect(options.web_socket_url).to be_nil
+          expect(options.bidi?).to be false
+
+          options.enable_bidi!
+          expect(options.web_socket_url).to be true
+          expect(options.bidi?).to be true
+
+          driver = Selenium::WebDriver.for :chrome, options: options
+
+          expect(driver.capabilities.web_socket_url).to be_a String
+
+          driver.quit
+        end
+
+        it 'enables BiDi on initialization',
+           exclusive: {bidi: true, reason: 'bazel does not have dependencies otherwise'} do
+          quit_driver
+
+          options = Selenium::WebDriver::Options.chrome(bidi: true)
+          expect(options.web_socket_url).to be true
+          expect(options.bidi?).to be true
+
+          driver = Selenium::WebDriver.for :chrome, options: options
+
+          expect(driver.capabilities.web_socket_url).to be_a String
+
+          driver.quit
         end
       end
     end # Chrome

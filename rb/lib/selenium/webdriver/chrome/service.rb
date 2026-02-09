@@ -20,33 +20,27 @@
 module Selenium
   module WebDriver
     module Chrome
-      #
-      # @api private
-      #
-
       class Service < WebDriver::Service
         DEFAULT_PORT = 9515
         EXECUTABLE = 'chromedriver'
-        MISSING_TEXT = <<~ERROR
-          Unable to find chromedriver. Please download the server from
-          https://chromedriver.storage.googleapis.com/index.html and place it somewhere on your PATH.
-          More info at https://github.com/SeleniumHQ/selenium/wiki/ChromeDriver.
-        ERROR
         SHUTDOWN_SUPPORTED = true
+        DRIVER_PATH_ENV_KEY = 'SE_CHROMEDRIVER'
 
-        private
+        def initialize(args: nil, **)
+          if ENV.key?('SE_DEBUG')
+            args = Array(args.dup)
+            warn_driver_log_override if args.reject! { |arg| arg.include?('log-level') || arg.include?('silent') }
+            args << '--verbose'
+          end
 
-        # Note: This processing is deprecated
-        def extract_service_args(driver_opts)
-          driver_args = super
-          driver_opts = driver_opts.dup
-          driver_args << "--log-path=#{driver_opts.delete(:log_path)}" if driver_opts.key?(:log_path)
-          driver_args << "--url-base=#{driver_opts.delete(:url_base)}" if driver_opts.key?(:url_base)
-          driver_args << "--port-server=#{driver_opts.delete(:port_server)}" if driver_opts.key?(:port_server)
-          driver_args << "--whitelisted-ips=#{driver_opts.delete(:whitelisted_ips)}" if driver_opts.key?(:whitelisted_ips)
-          driver_args << "--verbose" if driver_opts.key?(:verbose)
-          driver_args << "--silent" if driver_opts.key?(:silent)
-          driver_args
+          super
+        end
+
+        def log
+          return @log unless @log.is_a? String
+
+          @args << "--log-path=#{@log}"
+          @log = nil
         end
       end # Service
     end # Chrome

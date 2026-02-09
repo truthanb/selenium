@@ -26,16 +26,20 @@ module Selenium
           CONTENT_TYPE    = 'application/json'
           DEFAULT_HEADERS = {
             'Accept' => CONTENT_TYPE,
-            'Content-Type' => "#{CONTENT_TYPE}; charset=UTF-8",
-            'User-Agent' => "selenium/#{WebDriver::VERSION} (ruby #{Platform.os})"
+            'Content-Type' => "#{CONTENT_TYPE}; charset=UTF-8"
           }.freeze
+          BINARY_ENCODINGS = [Encoding::BINARY, Encoding::ASCII_8BIT].freeze
 
-          attr_accessor :timeout
-          attr_writer :server_url
+          class << self
+            attr_accessor :extra_headers
+            attr_writer :user_agent
 
-          def initialize
-            @timeout = nil
+            def user_agent
+              @user_agent ||= "selenium/#{WebDriver::VERSION} (ruby #{Platform.os})"
+            end
           end
+
+          attr_writer :server_url
 
           def quit_errors
             [IOError]
@@ -45,17 +49,19 @@ module Selenium
             # hook for subclasses - will be called on Driver#quit
           end
 
+          # steep:ignore:start
           def call(verb, url, command_hash)
             url      = server_url.merge(url) unless url.is_a?(URI)
-            headers  = DEFAULT_HEADERS.dup
+            headers  = common_headers.dup
             headers['Cache-Control'] = 'no-cache' if verb == :get
 
             if command_hash
+              command_hash              = ensure_utf8_encoding(command_hash)
               payload                   = JSON.generate(command_hash)
               headers['Content-Length'] = payload.bytesize.to_s if %i[post put].include?(verb)
 
-              WebDriver.logger.info("   >>> #{url} | #{payload}")
-              WebDriver.logger.debug("     > #{headers.inspect}")
+              WebDriver.logger.debug("   >>> #{url} | #{payload}", id: :command)
+              WebDriver.logger.debug("     > #{headers.inspect}", id: :header)
             elsif verb == :post
               payload = '{}'
               headers['Content-Length'] = '2'
@@ -63,8 +69,19 @@ module Selenium
 
             request verb, url, headers, payload
           end
+          # steep:ignore:end
 
           private
+
+          def common_headers
+            @common_headers ||= begin
+              headers = DEFAULT_HEADERS.dup
+              headers['User-Agent'] = Common.user_agent
+              headers = headers.merge(Common.extra_headers || {})
+
+              headers
+            end
+          end
 
           def server_url
             return @server_url if @server_url
@@ -76,11 +93,41 @@ module Selenium
             raise NotImplementedError, 'subclass responsibility'
           end
 
+          def ensure_utf8_encoding(obj)
+            case obj
+            when String
+              encode_string_to_utf8(obj)
+            when Array
+              obj.map { |item| ensure_utf8_encoding(item) }
+            when Hash
+              obj.each_with_object({}) do |(key, value), result|
+                result[ensure_utf8_encoding(key)] = ensure_utf8_encoding(value)
+              end
+            else
+              obj
+            end
+          end
+
+          def encode_string_to_utf8(str)
+            return str if str.encoding == Encoding::UTF_8 && str.valid_encoding?
+
+            if BINARY_ENCODINGS.include?(str.encoding)
+              result = str.dup.force_encoding(Encoding::UTF_8)
+              return result if result.valid_encoding?
+            end
+
+            str.encode(Encoding::UTF_8)
+          rescue EncodingError => e
+            raise Error::WebDriverError,
+                  "Unable to encode string to UTF-8: #{e.message}. " \
+                  "String encoding: #{str.encoding}, content: #{str.inspect}"
+          end
+
           def create_response(code, body, content_type)
             code = code.to_i
             body = body.to_s.strip
             content_type = content_type.to_s
-            WebDriver.logger.info("<- #{body}")
+            WebDriver.logger.debug("<- #{body}", id: :command)
 
             if content_type.include? CONTENT_TYPE
               raise Error::WebDriverError, "empty body: #{content_type.inspect} (#{code})\n#{body}" if body.empty?

@@ -15,48 +15,45 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.chromium.options import ChromiumOptions
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 
 class Options(ChromiumOptions):
+    KEY = "ms:edgeOptions"
 
-    def __init__(self, is_legacy=True):
-        super(Options, self).__init__()
-        self._is_legacy = is_legacy
-
-        if is_legacy:
-            self._page_load_strategy = "normal"
+    def __init__(self) -> None:
+        """Initialize EdgeOptions with default settings."""
+        super().__init__()
+        self._use_webview = False
 
     @property
-    def page_load_strategy(self):
-        if not self._is_legacy:
-            raise AttributeError("Page Load Strategy only exists in Legacy Mode")
+    def use_webview(self) -> bool:
+        """Returns Whether WebView2 is enabled for Edge browser."""
+        return self._use_webview
 
-        return self._page_load_strategy
+    @use_webview.setter
+    def use_webview(self, value: bool) -> None:
+        """Enables or disables WebView2 support for Edge browser.
 
-    @page_load_strategy.setter
-    def page_load_strategy(self, value):
-        if not self._is_legacy:
-            raise AttributeError("Page Load Strategy only exists in Legacy Mode")
-
-        if value not in ['normal', 'eager', 'none']:
-            raise ValueError("Page Load Strategy should be 'normal', 'eager' or 'none'.")
-        self._page_load_strategy = value
-
-    def to_capabilities(self):
+        Args:
+            value: True to enable WebView2 support, False to disable.
         """
-        Creates a capabilities with all the options that have been set and
-        :Returns: A dictionary with everything
-        """
-        if not self._is_legacy:
-            return super(Options, self).to_capabilities()
+        self._use_webview = bool(value)
 
-        caps = self._caps
-        caps['pageLoadStrategy'] = self._page_load_strategy
+    def to_capabilities(self) -> dict:
+        """Creates a capabilities with all the options that have been set.
+
+        Returns:
+            A dictionary with all set options for Edge browser.
+        """
+        caps = super().to_capabilities()
+        if self._use_webview:
+            caps["browserName"] = "webview2"
 
         return caps
 
     @property
-    def default_capabilities(self):
+    def default_capabilities(self) -> dict:
+        """Returns the default capabilities for Edge browser."""
         return DesiredCapabilities.EDGE.copy()

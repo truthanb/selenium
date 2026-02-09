@@ -20,16 +20,27 @@
 module Selenium
   module WebDriver
     module Firefox
-
       #
       # Driver implementation for Firefox using GeckoDriver.
       # @api private
       #
 
       class Driver < WebDriver::Driver
-        include DriverExtensions::HasAddons
-        include DriverExtensions::HasWebStorage
-        include DriverExtensions::TakesScreenshot
+        EXTENSIONS = [DriverExtensions::HasAddons,
+                      DriverExtensions::FullPageScreenshot,
+                      DriverExtensions::HasContext,
+                      DriverExtensions::HasBiDi,
+                      DriverExtensions::HasLogEvents,
+                      DriverExtensions::HasNetworkInterception,
+                      DriverExtensions::PrintsPage].freeze
+
+        include LocalDriver
+
+        def initialize(options: nil, service: nil, url: nil, **)
+          initialize_local_driver(options, service, url) do |caps, driver_url|
+            super(caps: caps, url: driver_url, **)
+          end
+        end
 
         def browser
           :firefox

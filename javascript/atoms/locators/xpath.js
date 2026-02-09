@@ -36,12 +36,12 @@ goog.provide('bot.locators.xpath');
 goog.require('bot');
 goog.require('bot.Error');
 goog.require('bot.ErrorCode');
+goog.require('bot.locators');
 goog.require('goog.array');
 goog.require('goog.dom');
 goog.require('goog.dom.NodeType');
 goog.require('goog.userAgent');
 goog.require('goog.userAgent.product');
-goog.require('wgxpath');
 
 /**
  * XPathResult enum values. These are defined separately since
@@ -56,7 +56,7 @@ goog.require('wgxpath');
 // we set the flag --collapse_properties (http://goo.gl/5W6cP).
 // The compiler should have thrown the error anyways, it's a bug that it fails
 // only when introducing this enum.
-// Solution: remove --collapase_properties from the js_binary rule or
+// Solution: remove --collapse_properties from the js_binary rule or
 // use goog.exportSymbol to export the public methods and get rid of the alias.
 bot.locators.XPathResult_ = {
   ORDERED_NODE_SNAPSHOT_TYPE: 7,
@@ -68,9 +68,9 @@ bot.locators.XPathResult_ = {
  * Default XPath namespace resolver.
  * @private
  */
-bot.locators.xpath.DEFAULT_RESOLVER_ = (function() {
-  var namespaces = {svg: 'http://www.w3.org/2000/svg'};
-  return function(prefix) {
+bot.locators.xpath.DEFAULT_RESOLVER_ = (function () {
+  var namespaces = { svg: 'http://www.w3.org/2000/svg' };
+  return function (prefix) {
     return namespaces[prefix] || null;
   };
 })();
@@ -87,18 +87,12 @@ bot.locators.xpath.DEFAULT_RESOLVER_ = (function() {
  * @private
  * @see http://www.w3.org/TR/DOM-Level-3-XPath/xpath.html#XPathEvaluator-evaluate
  */
-bot.locators.xpath.evaluate_ = function(node, path, resultType) {
+bot.locators.xpath.evaluate_ = function (node, path, resultType) {
   var doc = goog.dom.getOwnerDocument(node);
 
   if (!doc.documentElement) {
     // document is not loaded yet
     return null;
-  }
-
-  // Let the wgxpath library be compiled away unless we are on IE or Android.
-  // TODO: Restrict this to just IE when we drop support for Froyo.
-  if (goog.userAgent.IE || goog.userAgent.product.ANDROID) {
-    wgxpath.install(goog.dom.getWindow(doc));
   }
 
   try {
@@ -136,7 +130,7 @@ bot.locators.xpath.evaluate_ = function(node, path, resultType) {
         for (var key in reversedNamespaces) {
           namespaces[reversedNamespaces[key]] = key;
         }
-        resolver = function(prefix) {
+        resolver = function (prefix) {
           return namespaces[prefix] || null;
         };
       }
@@ -161,8 +155,8 @@ bot.locators.xpath.evaluate_ = function(node, path, resultType) {
     // other cases, we assume an invalid xpath has caused the exception.
     if (!(goog.userAgent.GECKO && ex.name == 'NS_ERROR_ILLEGAL_VALUE')) {
       throw new bot.Error(bot.ErrorCode.INVALID_SELECTOR_ERROR,
-          'Unable to locate an element with the xpath expression ' + path +
-          ' because of the following error:\n' + ex);
+        'Unable to locate an element with the xpath expression ' + path +
+        ' because of the following error:\n' + ex);
     }
   }
 };
@@ -173,11 +167,11 @@ bot.locators.xpath.evaluate_ = function(node, path, resultType) {
  * @param {string} path XPath expression to include in the error message.
  * @private
  */
-bot.locators.xpath.checkElement_ = function(node, path) {
+bot.locators.xpath.checkElement_ = function (node, path) {
   if (!node || node.nodeType != goog.dom.NodeType.ELEMENT) {
     throw new bot.Error(bot.ErrorCode.INVALID_SELECTOR_ERROR,
-        'The result of the xpath expression "' + path +
-        '" is: ' + node + '. It should be an element.');
+      'The result of the xpath expression "' + path +
+      '" is: ' + node + '. It should be an element.');
   }
 };
 
@@ -190,11 +184,11 @@ bot.locators.xpath.checkElement_ = function(node, path) {
  * @return {Element} The first matching element found in the DOM, or null if no
  *     such element could be found.
  */
-bot.locators.xpath.single = function(target, root) {
+bot.locators.xpath.single = function (target, root) {
 
   function selectSingleNode() {
     var result = bot.locators.xpath.evaluate_(root, target,
-        bot.locators.XPathResult_.FIRST_ORDERED_NODE_TYPE);
+      bot.locators.XPathResult_.FIRST_ORDERED_NODE_TYPE);
 
     if (result) {
       var node = result.singleNodeValue;
@@ -210,7 +204,7 @@ bot.locators.xpath.single = function(target, root) {
   }
 
   var node = selectSingleNode();
-  if (!goog.isNull(node)) {
+  if (node !== null) {
     bot.locators.xpath.checkElement_(node, target);
   }
   return /** @type {Element} */ (node);
@@ -224,11 +218,11 @@ bot.locators.xpath.single = function(target, root) {
  *     search under.
  * @return {!IArrayLike} All matching elements, or an empty list.
  */
-bot.locators.xpath.many = function(target, root) {
+bot.locators.xpath.many = function (target, root) {
 
   function selectNodes() {
     var result = bot.locators.xpath.evaluate_(root, target,
-        bot.locators.XPathResult_.ORDERED_NODE_SNAPSHOT_TYPE);
+      bot.locators.XPathResult_.ORDERED_NODE_SNAPSHOT_TYPE);
     if (result) {
       var count = result.snapshotLength;
       var results = [];
@@ -247,7 +241,7 @@ bot.locators.xpath.many = function(target, root) {
   }
 
   var nodes = selectNodes();
-  goog.array.forEach(nodes, function(n) {
+  goog.array.forEach(nodes, function (n) {
     bot.locators.xpath.checkElement_(n, target);
   });
   return /** @type {!IArrayLike} */ (nodes);

@@ -1,0 +1,32 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
+py_binary(
+    name = "untar",
+    srcs = [
+        "untar.py",
+    ],
+    legacy_create_init = False,
+    visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "ruff_check",
+    srcs = ["ruff_check.py"],
+    data = [
+        "//py:pyproject.toml",
+        "@multitool//tools/ruff",
+    ],
+    visibility = ["//visibility:public"],
+    deps = ["@rules_python//python/runfiles"],
+)
+
+py_binary(
+    name = "ruff_format",
+    srcs = ["ruff_format.py"],
+    data = [
+        "//py:pyproject.toml",
+        "@multitool//tools/ruff",
+    ],
+    visibility = ["//visibility:public"],
+    deps = ["@rules_python//python/runfiles"],
+)

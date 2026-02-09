@@ -21,13 +21,38 @@ require_relative 'spec_helper'
 
 module Selenium
   module WebDriver
-    describe Error do
-      it 'should raise an appropriate error' do
+    describe Error, exclusive: {bidi: false, reason: 'Not yet implemented with BiDi'} do
+      it 'raises an appropriate error' do
         driver.navigate.to url_for('xhtmlTest.html')
 
         expect {
-          driver.find_element(id: 'nonexistant')
-        }.to raise_error(WebDriver::Error::NoSuchElementError)
+          driver.find_element(id: 'nonexistent')
+        }.to raise_error(WebDriver::Error::NoSuchElementError, /#nosuchelementexception/)
+      end
+
+      it 'has backtrace locations' do
+        driver.find_element(id: 'nonexistent')
+      rescue WebDriver::Error::NoSuchElementError => e
+        expect(e.backtrace_locations).not_to be_empty
+      end
+
+      it 'has cause' do
+        driver.find_element(id: 'nonexistent')
+      rescue WebDriver::Error::NoSuchElementError => e
+        expect(e.cause).to be_a(WebDriver::Error::WebDriverError)
+      end
+
+      it 'has backtrace' do
+        driver.find_element(id: 'nonexistent')
+      rescue WebDriver::Error::NoSuchElementError => e
+        expect(e.backtrace).not_to be_empty
+      end
+
+      it 'has backtrace when using a remote server', exclusive: {driver: :remote} do
+        driver.send(:bridge).instance_variable_set(:@session_id, 'fake_session_id')
+        driver.window_handle
+      rescue WebDriver::Error::InvalidSessionIdError => e
+        expect(e.backtrace).not_to be_empty
       end
     end
   end # WebDriver

@@ -45,6 +45,35 @@ module Selenium
       end
 
       #
+      # Switch to a new top-level browsing context
+      #
+      # @param type either :tab or :window
+      #
+
+      # steep:ignore:start
+      def new_window(type = :window)
+        raise ArgumentError, "Valid types are :tab and :window, received: #{type.inspect}" unless %i[window
+                                                                                                     tab].include?(type)
+
+        handle = @bridge.new_window(type)['handle']
+
+        if block_given?
+          execute_and_close = proc do
+            yield(self)
+            begin
+              @bridge.close
+            rescue Error::NoSuchWindowError
+              # window already closed
+            end
+          end
+          window(handle, &execute_and_close)
+        else
+          window(handle)
+        end
+      end
+      # steep:ignore:end
+
+      #
       # switch to the given window handle
       #
       # If given a block, this method will switch back to the original window after
@@ -57,10 +86,10 @@ module Selenium
       def window(id)
         if block_given?
           original = begin
-                       @bridge.window_handle
-                     rescue Error::NoSuchWindowError
-                       nil
-                     end
+            @bridge.window_handle
+          rescue Error::NoSuchWindowError
+            nil
+          end
 
           unless @bridge.window_handles.include? id
             raise Error::NoSuchWindowError, "The specified identifier '#{id}' is not found in the window handle list"
@@ -69,12 +98,11 @@ module Selenium
           @bridge.switch_to_window id
 
           begin
-            returned = yield
+            yield
           ensure
             current_handles = @bridge.window_handles
             original = current_handles.first unless current_handles.include? original
             @bridge.switch_to_window original
-            returned
           end
         else
           @bridge.switch_to_window id

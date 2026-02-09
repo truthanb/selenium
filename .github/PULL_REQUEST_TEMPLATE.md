@@ -1,9 +1,24 @@
-<!-- NOTE
-Please be aware that the Selenium Grid 3.x is being deprecated in favour of the
-upcoming version 4.x. We won't be receiving any PRs related to the Grid 3.x code. Thanks!
--->
+<!-- Thanks for Contributing to Selenium! -->
+<!-- Please read our contribution guidelines: https://github.com/SeleniumHQ/selenium/blob/trunk/CONTRIBUTING.md -->
 
+### 🔗 Related Issues
+<!-- Example: Fixes #1234 or Closes #5678 -->
+<!-- If the reason for this PR is not obvious, consider creating an issue for it first -->
 
+### 💥 What does this PR do?
+<!-- Describe what this change includes and how it works -->
 
+### 🔧 Implementation Notes
+<!--- Why did you implement it this way? -->
+<!--- What alternatives to this approach did you consider? -->
 
-- [ ] By placing an `X` in the preceding checkbox, I verify that I have signed the [Contributor License Agreement](https://github.com/SeleniumHQ/selenium/blob/master/CONTRIBUTING.md#step-6-sign-the-cla)
+### 💡 Additional Considerations
+<!--- Are there any decisions that need to be made before accepting this PR? -->
+<!--- Is there any follow-on work that needs to be done? (e.g., docs, tests, etc.) -->
+
+### 🔄 Types of changes
+<!-- ✂️ Please delete anything that doesn't apply -->
+- Cleanup (formatting, renaming)
+- Bug fix (backwards compatible)
+- New feature (non-breaking change which adds functionality *and tests!*)
+- Breaking change (fix or feature that would cause existing functionality to change)

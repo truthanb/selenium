@@ -1,90 +1,109 @@
+// <copyright file="FirefoxProfileTests.cs" company="Selenium Committers">
+// Licensed to the Software Freedom Conservancy (SFC) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The SFC licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+// </copyright>
+
 using System.Collections.Generic;
 using NUnit.Framework;
 
-namespace OpenQA.Selenium.Firefox
+namespace OpenQA.Selenium.Firefox;
+
+[Ignore("")]
+[TestFixture]
+public class FirefoxProfileTests
 {
-    [TestFixture]
-    public class FirefoxProfileTests
+    private FirefoxProfile profile;
+
+    [SetUp]
+    public void SetUp()
     {
-        private FirefoxProfile profile;
+        profile = new FirefoxProfile();
+    }
 
-        [SetUp]
-        public void SetUp()
+    [TearDown]
+    public void TearDown()
+    {
+        profile.Clean();
+    }
+
+    [Test]
+    public void ShouldQuoteStringsWhenSettingStringProperties()
+    {
+        profile.SetPreference("cheese", "brie");
+
+        List<string> props = ReadGeneratedProperties();
+        bool seenCheese = false;
+        foreach (string line in props)
         {
-            profile = new FirefoxProfile();
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            profile.Clean();
-        }
-
-        //[Test]
-        public void ShouldQuoteStringsWhenSettingStringProperties()
-        {
-            profile.SetPreference("cheese", "brie");
-
-            List<string> props = ReadGeneratedProperties();
-            bool seenCheese = false;
-            foreach (string line in props)
+            if (line.Contains("cheese") && line.Contains("\"brie\""))
             {
-                if (line.Contains("cheese") && line.Contains("\"brie\""))
-                {
-                    seenCheese = true;
-                    break;
-                }
+                seenCheese = true;
+                break;
             }
-            Assert.IsTrue(seenCheese);
         }
+        Assert.That(seenCheese, Is.True);
+    }
 
-        //[Test]
-        public void ShouldSetIntegerPreferences()
+    [Test]
+    public void ShouldSetIntegerPreferences()
+    {
+        profile.SetPreference("cheese", 1234);
+
+        List<string> props = ReadGeneratedProperties();
+        bool seenCheese = false;
+        foreach (string line in props)
         {
-            profile.SetPreference("cheese", 1234);
-
-            List<string> props = ReadGeneratedProperties();
-            bool seenCheese = false;
-            foreach (string line in props)
+            if (line.Contains("cheese") && line.Contains(", 1234)"))
             {
-                if (line.Contains("cheese") && line.Contains(", 1234)"))
-                {
-                    seenCheese = true;
-                    break;
-                }
+                seenCheese = true;
+                break;
             }
-            Assert.IsTrue(seenCheese, "Did not see integer value being set correctly");
         }
+        Assert.That(seenCheese, Is.True, "Did not see integer value being set correctly");
+    }
 
-        //[Test]
-        public void testShouldSetBooleanPreferences()
+    [Test]
+    public void testShouldSetBooleanPreferences()
+    {
+        profile.SetPreference("cheese", false);
+
+        List<string> props = ReadGeneratedProperties();
+        bool seenCheese = false;
+        foreach (string line in props)
         {
-            profile.SetPreference("cheese", false);
-
-            List<string> props = ReadGeneratedProperties();
-            bool seenCheese = false;
-            foreach (string line in props)
+            if (line.Contains("cheese") && line.Contains(", false)"))
             {
-                if (line.Contains("cheese") && line.Contains(", false)"))
-                {
-                    seenCheese = true;
-                }
+                seenCheese = true;
             }
-
-            Assert.IsTrue(seenCheese, "Did not see boolean value being set correctly");
         }
 
-        private List<string> ReadGeneratedProperties()
+        Assert.That(seenCheese, Is.True, "Did not see boolean value being set correctly");
+    }
+
+    private List<string> ReadGeneratedProperties()
+    {
+        profile.WriteToDisk();
+        List<string> generatedProperties = new List<string>();
+        string userPrefs = System.IO.Path.Combine(profile.ProfileDirectory, "user.js");
+        if (System.IO.File.Exists(userPrefs))
         {
-            profile.WriteToDisk();
-            List<string> generatedProperties = new List<string>();
-            string userPrefs = System.IO.Path.Combine(profile.ProfileDirectory, "user.js");
-            if (System.IO.File.Exists(userPrefs))
-            {
-                string[] fileLines = System.IO.File.ReadAllLines(userPrefs);
-                generatedProperties = new List<string>(fileLines);
-            }
-            return generatedProperties;
+            string[] fileLines = System.IO.File.ReadAllLines(userPrefs);
+            generatedProperties = new List<string>(fileLines);
         }
+        return generatedProperties;
     }
 }

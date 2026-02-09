@@ -1,112 +1,134 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
+// <copyright file="DevToolsPerformanceTest.cs" company="Selenium Committers">
+// Licensed to the Software Freedom Conservancy (SFC) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The SFC licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+// </copyright>
+
 using System.Threading.Tasks;
 using NUnit.Framework;
+using CurrentCdpVersion = OpenQA.Selenium.DevTools.V144;
 
-namespace OpenQA.Selenium.DevTools
+namespace OpenQA.Selenium.DevTools;
+
+[TestFixture]
+public class DevToolsPerformanceTest : DevToolsTestFixture
 {
-    [TestFixture]
-    public class DevToolsPerformanceTest : DevToolsTestFixture
+    [Test]
+    [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Edge, "We run it in Chrome and Edge releases are usually late.")]
+    public async Task EnableAndDisablePerformance()
     {
-        [Test]
-        [IgnoreBrowser(Selenium.Browser.EdgeLegacy, "Legacy Edge does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
-        public async Task EnableAndDisablePerformance()
-        {
-            await session.Performance.Enable();
-            driver.Url = simpleTestPage;
-            await session.Performance.Disable();
-        }
+        var domains = session.GetVersionSpecificDomains<CurrentCdpVersion.DevToolsSessionDomains>();
+        await domains.Performance.Enable(new CurrentCdpVersion.Performance.EnableCommandSettings());
+        driver.Url = simpleTestPage;
+        await domains.Performance.Disable();
+    }
 
-        [Test]
-        [IgnoreBrowser(Selenium.Browser.EdgeLegacy, "Legacy Edge does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
-        public async Task DisablePerformance()
-        {
-            await session.Performance.Disable();
-            driver.Url = simpleTestPage;
-            await session.Performance.Disable();
-        }
+    [Test]
+    [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Edge, "We run it in Chrome and Edge releases are usually late.")]
+    public async Task DisablePerformance()
+    {
+        var domains = session.GetVersionSpecificDomains<CurrentCdpVersion.DevToolsSessionDomains>();
+        await domains.Performance.Disable();
+        driver.Url = simpleTestPage;
+        await domains.Performance.Disable();
+    }
 
-        [Test]
-        [IgnoreBrowser(Selenium.Browser.EdgeLegacy, "Legacy Edge does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
-        public async Task SetTimeDomainTimeTickPerformance()
+    [Test]
+    [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Edge, "We run it in Chrome and Edge releases are usually late.")]
+    public async Task SetTimeDomainTimeTickPerformance()
+    {
+        var domains = session.GetVersionSpecificDomains<CurrentCdpVersion.DevToolsSessionDomains>();
+        await domains.Performance.Disable();
+        await domains.Performance.SetTimeDomain(new CurrentCdpVersion.Performance.SetTimeDomainCommandSettings()
         {
-            await session.Performance.Disable();
-            await session.Performance.SetTimeDomain(new Performance.SetTimeDomainCommandSettings()
-            {
-                TimeDomain = "timeTicks"
-            });
-            await session.Performance.Enable();
-            driver.Url = simpleTestPage;
-            await session.Performance.Disable();
-        }
+            TimeDomain = "timeTicks"
+        });
+        await domains.Performance.Enable(new CurrentCdpVersion.Performance.EnableCommandSettings());
+        driver.Url = simpleTestPage;
+        await domains.Performance.Disable();
+    }
 
-        [Test]
-        [IgnoreBrowser(Selenium.Browser.EdgeLegacy, "Legacy Edge does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
-        public async Task SetTimeDomainsThreadTicksPerformance()
+    [Test]
+    [IgnorePlatform("Windows", "Thread time is not supported on this platform")]
+    [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Edge, "We run it in Chrome and Edge releases are usually late.")]
+    public async Task SetTimeDomainsThreadTicksPerformance()
+    {
+        var domains = session.GetVersionSpecificDomains<CurrentCdpVersion.DevToolsSessionDomains>();
+        await domains.Performance.Disable();
+        await domains.Performance.SetTimeDomain(new CurrentCdpVersion.Performance.SetTimeDomainCommandSettings()
         {
-            await session.Performance.Disable();
-            await session.Performance.SetTimeDomain(new Performance.SetTimeDomainCommandSettings()
-            {
-                TimeDomain = "threadTicks"
-            });
-            await session.Performance.Enable();
-            driver.Url = simpleTestPage;
-            await session.Performance.Disable();
-        }
+            TimeDomain = "threadTicks"
+        });
+        await domains.Performance.Enable(new CurrentCdpVersion.Performance.EnableCommandSettings());
+        driver.Url = simpleTestPage;
+        await domains.Performance.Disable();
+    }
 
-        [Test]
-        [IgnoreBrowser(Selenium.Browser.EdgeLegacy, "Legacy Edge does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
-        public async Task GetMetricsByTimeTicks()
+    [Test]
+    [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Edge, "We run it in Chrome and Edge releases are usually late.")]
+    public async Task GetMetricsByTimeTicks()
+    {
+        var domains = session.GetVersionSpecificDomains<CurrentCdpVersion.DevToolsSessionDomains>();
+        await domains.Performance.SetTimeDomain(new CurrentCdpVersion.Performance.SetTimeDomainCommandSettings()
         {
-            await session.Performance.SetTimeDomain(new Performance.SetTimeDomainCommandSettings()
-            {
-                TimeDomain = "timeTicks"
-            });
-            await session.Performance.Enable();
-            driver.Url = simpleTestPage;
-            var response = await session.Performance.GetMetrics();
-            Performance.Metric[] metrics = response.Metrics;
-            Assert.That(metrics, Is.Not.Null);
-            Assert.That(metrics.Length, Is.GreaterThan(0));
-            await session.Performance.Disable();
-        }
+            TimeDomain = "timeTicks"
+        });
+        await domains.Performance.Enable(new CurrentCdpVersion.Performance.EnableCommandSettings());
+        driver.Url = simpleTestPage;
+        var response = await domains.Performance.GetMetrics();
+        var metrics = response.Metrics;
+        Assert.That(metrics, Is.Not.Null);
+        Assert.That(metrics.Length, Is.GreaterThan(0));
+        await domains.Performance.Disable();
+    }
 
-        [Test]
-        [IgnoreBrowser(Selenium.Browser.EdgeLegacy, "Legacy Edge does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
-        [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
-        public async Task GetMetricsByThreadTicks()
+    [Test]
+    [IgnorePlatform("Windows", "Thread time is not supported on this platform")]
+    [IgnoreBrowser(Selenium.Browser.IE, "IE does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Firefox, "Firefox does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Safari, "Safari does not support Chrome DevTools Protocol")]
+    [IgnoreBrowser(Selenium.Browser.Edge, "We run it in Chrome and Edge releases are usually late.")]
+    public async Task GetMetricsByThreadTicks()
+    {
+        var domains = session.GetVersionSpecificDomains<CurrentCdpVersion.DevToolsSessionDomains>();
+        await domains.Performance.SetTimeDomain(new CurrentCdpVersion.Performance.SetTimeDomainCommandSettings()
         {
-            await session.Performance.SetTimeDomain(new Performance.SetTimeDomainCommandSettings()
-            {
-                TimeDomain = "threadTicks"
-            });
-            await session.Performance.Enable();
-            driver.Url = simpleTestPage;
-            var response = await session.Performance.GetMetrics();
-            Performance.Metric[] metrics = response.Metrics;
-            Assert.That(metrics, Is.Not.Null);
-            Assert.That(metrics.Length, Is.GreaterThan(0));
-            await session.Performance.Disable();
-        }
+            TimeDomain = "threadTicks"
+        });
+        await domains.Performance.Enable(new CurrentCdpVersion.Performance.EnableCommandSettings());
+        driver.Url = simpleTestPage;
+        var response = await domains.Performance.GetMetrics();
+        var metrics = response.Metrics;
+        Assert.That(metrics, Is.Not.Null);
+        Assert.That(metrics.Length, Is.GreaterThan(0));
+        await domains.Performance.Disable();
     }
 }

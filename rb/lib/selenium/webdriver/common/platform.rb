@@ -51,29 +51,21 @@ module Selenium
       end
 
       def ci
-        if ENV['TRAVIS']
-          :travis
-        elsif ENV['JENKINS']
+        if ENV['JENKINS']
           :jenkins
         elsif ENV['APPVEYOR']
           :appveyor
+        elsif ENV['GITHUB_ACTIONS']
+          :github
         end
-      end
-
-      def bitsize
-        @bitsize ||= if defined?(FFI::Platform::ADDRESS_SIZE)
-                       FFI::Platform::ADDRESS_SIZE
-                     elsif defined?(FFI)
-                       FFI.type_size(:pointer) == 4 ? 32 : 64
-                     elsif jruby?
-                       Integer(ENV_JAVA['sun.arch.data.model'])
-                     else
-                       1.size == 4 ? 32 : 64
-                     end
       end
 
       def jruby?
         engine == :jruby
+      end
+
+      def truffleruby?
+        engine == :truffleruby
       end
 
       def ruby_version
@@ -92,15 +84,21 @@ module Selenium
         os == :linux
       end
 
+      def unix?
+        os == :unix
+      end
+
       def wsl?
         return false unless linux?
 
-        File.read('/proc/version').include?('Microsoft')
+        File.read('/proc/version').downcase.include?('microsoft')
+      rescue Errno::EACCES
+        # the file cannot be accessed on Linux on DeX
+        false
       end
 
       def cygwin?
-        RUBY_PLATFORM =~ /cygwin/
-        !Regexp.last_match.nil?
+        RUBY_PLATFORM.include?('cygwin')
       end
 
       def null_device
@@ -111,7 +109,9 @@ module Selenium
         windows? && !cygwin? ? %("#{str}") : str
       end
 
-      def cygwin_path(path, **opts)
+      def cygwin_path(path, only_cygwin: false, **opts)
+        return path if only_cygwin && !cygwin?
+
         flags = []
         opts.each { |k, v| flags << "--#{k}" if v }
 
@@ -148,43 +148,6 @@ module Selenium
         pid = Process.pid
 
         at_exit { yield if Process.pid == pid }
-      end
-
-      def find_binary(*binary_names)
-        paths = ENV['PATH'].split(File::PATH_SEPARATOR)
-
-        if windows?
-          binary_names.map! { |n| "#{n}.exe" }
-          binary_names.dup.each { |n| binary_names << n.gsub('exe', 'bat') }
-        end
-
-        binary_names.each do |binary_name|
-          paths.each do |path|
-            full_path = File.join(path, binary_name)
-            full_path = unix_path(full_path) if windows?
-            exe = Dir.glob(full_path).find { |f| File.executable?(f) }
-            return exe if exe
-          end
-        end
-
-        nil
-      end
-
-      def find_in_program_files(*binary_names)
-        paths = [
-          ENV['PROGRAMFILES'] || '\\Program Files',
-          ENV['ProgramFiles(x86)'] || '\\Program Files (x86)',
-          ENV['ProgramW6432'] || '\\Program Files'
-        ]
-
-        paths.each do |root|
-          binary_names.each do |name|
-            exe = File.join(root, name)
-            return exe if File.executable?(exe)
-          end
-        end
-
-        nil
       end
 
       def localhost

@@ -21,44 +21,50 @@ require_relative '../spec_helper'
 
 module Selenium
   module WebDriver
-    describe Element, only: {driver: :remote} do
+    describe Element, exclusive: {bidi: false, reason: 'Not yet implemented with BiDi'} do
       before do
-        driver.file_detector = ->(filename) { File.join(__dir__, filename) }
+        driver.file_detector = lambda(&:first)
       end
 
-      after do
-        driver.file_detector = nil
-      end
+      after { driver.file_detector = nil }
 
-      context 'when uploading one file', only: {browser: %i[chrome firefox ie]} do
-        it 'uses the file detector' do
+      context 'when uploading one file' do
+        it 'uses the provided file detector', exclusive: {driver: :remote},
+                                              flaky: {browser: :safari,
+                                                      ci: :github,
+                                                      reason: 'unreliable with downloads'} do
           driver.navigate.to url_for('upload.html')
 
-          driver.find_element(id: 'upload').send_keys('element_spec.rb')
-          driver.find_element(id: 'go').submit
+          driver.find_element(id: 'upload').send_keys(create_tempfile.path)
+          driver.find_element(id: 'go').click
           wait.until { driver.find_element(id: 'upload_label').displayed? }
 
           driver.switch_to.frame('upload_target')
-          wait.until { driver.find_element(xpath: '//body') }
+          wait.until { !driver.find_element(xpath: '//body').text.empty? }
 
           body = driver.find_element(xpath: '//body')
-          expect(body.text.scan('Licensed to the Software Freedom Conservancy').count).to eq(3)
+          expect(body.text.scan('This is a dummy test file').count).to eq(1)
         end
       end
 
-      context 'when uploading multiple files', only: {browser: %i[chrome firefox]} do
-        it 'uses the file detector' do
+      context 'when uploading multiple files' do
+        it 'uses the provided file detector', exclusive: {driver: :remote},
+                                              flaky: {browser: :safari,
+                                                      ci: :github,
+                                                      reason: 'unreliable with downloads'} do
           driver.navigate.to url_for('upload_multiple.html')
+          file1 = create_tempfile
+          file2 = create_tempfile
 
-          driver.find_element(id: 'upload').send_keys("driver_spec.rb\nelement_spec.rb")
-          driver.find_element(id: 'go').submit
+          driver.find_element(id: 'upload').send_keys("#{file1.path}\n#{file2.path}")
+          driver.find_element(id: 'go').click
           wait.until { driver.find_element(id: 'upload_label').displayed? }
 
           driver.switch_to.frame('upload_target')
-          wait.until { driver.find_element(xpath: '//body') }
+          wait.until { !driver.find_element(xpath: '//body').text.empty? }
 
           body = driver.find_element(xpath: '//body')
-          expect(body.text.scan('Licensed to the Software Freedom Conservancy').count).to eq(4)
+          expect(body.text.scan('This is a dummy test file').count).to eq(2)
         end
       end
     end

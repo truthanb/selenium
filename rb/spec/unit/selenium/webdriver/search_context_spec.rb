@@ -22,30 +22,35 @@ require_relative 'spec_helper'
 module Selenium
   module WebDriver
     describe SearchContext do
-      class TestSearchContext
-        attr_reader :bridge, :ref
+      let(:test_search_context) do
+        Class.new do
+          attr_reader :bridge, :ref
 
-        include Selenium::WebDriver::SearchContext
+          include Selenium::WebDriver::SearchContext
 
-        def initialize(bridge)
-          @bridge = bridge
+          def initialize(bridge)
+            @bridge = bridge
+          end
         end
       end
 
       let(:element)        { instance_double(Element) }
-      let(:bridge)         { instance_double('Bridge').as_null_object }
-      let(:search_context) { TestSearchContext.new(bridge) }
+      let(:bridge)         { instance_double(Remote::Bridge).as_null_object }
+      let(:search_context) { test_search_context.new(bridge) }
 
-      context 'finding a single element' do
-        it 'accepts a hash' do # rubocop:disable RSpec/RepeatedExample
-          expect(bridge).to receive(:find_element_by).with('id', 'bar', nil).and_return(element)
+      context 'when finding a single element' do
+        it 'accepts a hash' do
+          allow(bridge).to receive(:find_element_by).with('id', 'bar', nil).and_return(element)
+
           expect(search_context.find_element(id: 'bar')).to eq(element)
+          expect(bridge).to have_received(:find_element_by).with('id', 'bar', nil)
         end
 
-        # TODO: Rewrite this test so it's not a duplicate of above or remove
-        it 'accepts two arguments' do # rubocop:disable RSpec/RepeatedExample
-          expect(bridge).to receive(:find_element_by).with('id', 'bar', nil).and_return(element)
-          expect(search_context.find_element(id: 'bar')).to eq(element)
+        it 'accepts two arguments' do
+          allow(bridge).to receive(:find_element_by).with('id', 'bar', nil).and_return(element)
+
+          expect(search_context.find_element(:id, 'bar')).to eq(element)
+          expect(bridge).to have_received(:find_element_by).with('id', 'bar', nil)
         end
 
         it "raises an error if given an invalid 'by'" do
@@ -63,22 +68,41 @@ module Selenium
         end
       end
 
-      context 'finding multiple elements' do
-        it 'accepts a hash' do # rubocop:disable RSpec/RepeatedExample
-          expect(bridge).to receive(:find_elements_by).with('id', 'bar', nil).and_return([])
+      context 'when finding multiple elements' do
+        it 'accepts a hash' do
+          allow(bridge).to receive(:find_elements_by).with('id', 'bar', nil).and_return([])
+
           expect(search_context.find_elements(id: 'bar')).to eq([])
+          expect(bridge).to have_received(:find_elements_by).with('id', 'bar', nil)
         end
 
-        # TODO: Rewrite this test so it's not a duplicate of above or remove
-        it 'accepts two arguments' do # rubocop:disable RSpec/RepeatedExample
-          expect(bridge).to receive(:find_elements_by).with('id', 'bar', nil).and_return([])
-          expect(search_context.find_elements(id: 'bar')).to eq([])
+        it 'accepts two arguments' do
+          allow(bridge).to receive(:find_elements_by).with('id', 'bar', nil).and_return([])
+
+          expect(search_context.find_elements(:id, 'bar')).to eq([])
+          expect(bridge).to have_received(:find_elements_by).with('id', 'bar', nil)
         end
 
         it "raises an error if given an invalid 'by'" do
           expect {
             search_context.find_elements(foo: 'bar')
           }.to raise_error(ArgumentError, 'cannot find elements by :foo')
+        end
+      end
+
+      context 'when extra finders are registered' do
+        around do |example|
+          described_class.extra_finders = {accessibility_id: 'accessibility id'}
+          example.call
+        ensure
+          described_class.extra_finders = nil
+        end
+
+        it 'finds element' do
+          allow(bridge).to receive(:find_element_by).with('accessibility id', 'foo', nil).and_return(element)
+
+          expect(search_context.find_element(accessibility_id: 'foo')).to eq(element)
+          expect(bridge).to have_received(:find_element_by).with('accessibility id', 'foo', nil)
         end
       end
     end

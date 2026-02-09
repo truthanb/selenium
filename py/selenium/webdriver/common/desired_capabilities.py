@@ -14,15 +14,11 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
-"""
-The Desired Capabilities implementation.
-"""
+"""The Desired Capabilities implementation."""
 
 
-class DesiredCapabilities(object):
-    """
-    Set of default supported desired capabilities.
+class DesiredCapabilities:
+    """Set of default supported desired capabilities.
 
     Use this as a starting point for creating a desired capabilities object for
     requesting remote webdrivers for connecting to selenium server or selenium grid.
@@ -30,56 +26,41 @@ class DesiredCapabilities(object):
     Usage Example::
 
         from selenium import webdriver
+        from selenium.webdriver.firefox.options import Options
 
         selenium_grid_url = "http://198.0.0.1:4444/wd/hub"
 
-        # Create a desired capabilities object as a starting point.
-        capabilities = DesiredCapabilities.FIREFOX.copy()
-        capabilities['platform'] = "WINDOWS"
-        capabilities['version'] = "10"
+        # Create a new Options object for the desired browser.
+        options = Options()
+        options.set_capability("platformName", "windows")
+        options.browser_version = "142"
 
-        # Instantiate an instance of Remote WebDriver with the desired capabilities.
-        driver = webdriver.Remote(desired_capabilities=capabilities,
-                                  command_executor=selenium_grid_url)
-
-    Note: Always use '.copy()' on the DesiredCapabilities object to avoid the side
-    effects of altering the Global class instance.
-
+        # Instantiate an instance of Remote WebDriver with the new options.
+        driver = webdriver.Remote(command_executor=selenium_grid_url, options=options)
     """
 
     FIREFOX = {
         "browserName": "firefox",
         "acceptInsecureCerts": True,
+        "moz:debuggerAddress": True,
     }
 
     INTERNETEXPLORER = {
         "browserName": "internet explorer",
-        "version": "",
-        "platform": "WINDOWS",
+        "platformName": "windows",
     }
 
     EDGE = {
         "browserName": "MicrosoftEdge",
-        "version": "",
-        "platform": "WINDOWS"
     }
 
     CHROME = {
         "browserName": "chrome",
-        "version": "",
-        "platform": "ANY",
-    }
-
-    OPERA = {
-        "browserName": "opera",
-        "version": "",
-        "platform": "ANY",
     }
 
     SAFARI = {
         "browserName": "safari",
-        "version": "",
-        "platform": "MAC",
+        "platformName": "mac",
     }
 
     HTMLUNIT = {
@@ -98,30 +79,19 @@ class DesiredCapabilities(object):
     IPHONE = {
         "browserName": "iPhone",
         "version": "",
-        "platform": "MAC",
+        "platform": "mac",
     }
 
     IPAD = {
         "browserName": "iPad",
         "version": "",
-        "platform": "MAC",
-    }
-
-    ANDROID = {
-        "browserName": "android",
-        "version": "",
-        "platform": "ANDROID",
-    }
-
-    PHANTOMJS = {
-        "browserName": "phantomjs",
-        "version": "",
-        "platform": "ANY",
-        "javascriptEnabled": True,
+        "platform": "mac",
     }
 
     WEBKITGTK = {
         "browserName": "MiniBrowser",
-        "version": "",
-        "platform": "ANY",
+    }
+
+    WPEWEBKIT = {
+        "browserName": "MiniBrowser",
     }

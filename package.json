@@ -1,17 +1,12 @@
 {
-  "devDependencies": {
-    "@bazel/bazel": "^0.27.0",
-    "@bazel/buildifier": "^0.22.0",
-    "@bazel/ibazel": "^0.10.2",
-    "@bazel/jasmine": "^0.32.2",
-    "express": "^4.16.4",
-    "jszip": "^3.2.1",
-    "mocha": "^6.1.4",
-    "multer": "^1.4.1",
-    "rimraf": "^2.6.3",
-    "serve-index": "^1.9.1",
-    "sinon": "^7.3.2",
-    "tmp": "^0.1.0",
-    "xml2js": "^0.4.19"
+  "name": "selenium",
+  "packageManager": "pnpm@9.15.4",
+  "workspaces": [
+    "javascript/grid-ui",
+    "javascript/selenium-webdriver"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SeleniumHQ/selenium.git"
   }
 }

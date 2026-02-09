@@ -25,7 +25,7 @@ module Selenium
       module Http
         describe Default do
           let(:client) do
-            client = Default.new
+            client = described_class.new
             client.server_url = URI.parse('http://example.com')
 
             client
@@ -34,12 +34,12 @@ module Selenium
           it 'assigns default timeout to nil' do
             http = client.send :http
 
-            expect(http.open_timeout).to eq nil
+            expect(http.open_timeout).to eq 60
             expect(http.read_timeout).to eq 60
           end
 
           describe '#initialize' do
-            let(:client) { Default.new(read_timeout: 22, open_timeout: 23) }
+            let(:client) { described_class.new(read_timeout: 22, open_timeout: 23) }
 
             it 'accepts read timeout options' do
               expect(client.open_timeout).to eq 23
@@ -69,7 +69,7 @@ module Selenium
           end
 
           %w[http_proxy HTTP_PROXY].each do |proxy_var|
-            it "honors the #{proxy_var} environment varable" do
+            it "honors the #{proxy_var} environment variable" do
               with_env(proxy_var => 'http://proxy.org:8080') do
                 http = client.send :http
 
@@ -128,7 +128,7 @@ module Selenium
           it 'raises a sane error if a proxy is refusing connections' do
             with_env('http_proxy' => 'http://localhost:1234') do
               http = client.send :http
-              expect(http).to receive(:request).and_raise Errno::ECONNREFUSED.new('Connection refused')
+              allow(http).to receive(:request).and_raise Errno::ECONNREFUSED.new('Connection refused')
 
               expect {
                 client.call :post, 'http://example.com/foo/bar', {}

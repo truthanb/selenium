@@ -1,0 +1,14 @@
+module Selenium
+  module WebDriver
+    module DriverExtensions
+      module HasNetworkInterception
+        include _DevTools
+        include _Driver
+
+        @interceptor: untyped
+
+        def intercept: () { () -> untyped } -> untyped
+      end
+    end
+  end
+end

@@ -40,6 +40,9 @@
  */
 
 (function() {
+  // Enable the debug loader for the Closure Library (required for goog.require to work)
+  window.CLOSURE_UNCOMPILED_DEFINES = {'goog.ENABLE_DEBUG_LOADER': true};
+
   window.errors = [];
   window.onerror = function() { window.errors.push(arguments); console.log(arguments); };
   var scripts = document.getElementsByTagName('script');
@@ -55,18 +58,18 @@
     }
   }
 
-  // All of the files to load. Files are specified in the order they must be
+  // All the files to load. Files are specified in the order they must be
   // loaded, NOT alphabetical order.
   var files = [
-    '../../../third_party/closure/goog/base.js',
-    '../../deps.js'
+    '/filez/_main/third_party/closure/goog/base.js',
+    'deps.js'
   ];
 
-  if (location.pathname.lastIndexOf('/filez/selenium/javascript/', 0) === 0) {
+  if (location.pathname.lastIndexOf('/filez/_main/javascript/', 0) === 0) {
     directoryPath = '';
     files = [
-      '/filez/com_google_javascript_closure_library/closure/goog/base.js',
-      '/filez/selenium/javascript/atoms/deps.js',
+      '/filez/_main/third_party/closure/goog/base.js',
+      '/filez/_main/javascript/atoms/deps.js',
     ];
   }
 

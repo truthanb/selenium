@@ -23,34 +23,66 @@ module Selenium
   module WebDriver
     module Safari
       describe Driver do
-        let(:http)    { instance_double(Remote::Http::Default, call: resp).as_null_object }
-        let(:resp)    { {'value' => {'sessionId' => 'foo', 'capabilities' => Remote::Capabilities.safari.as_json}} }
-        let(:service) { instance_double(Service, start: true, uri: 'http://example.com') }
-        let(:caps)    { Remote::Capabilities.safari }
+        let(:service) do
+          instance_double(Service, launch: service_manager, executable_path: nil, 'executable_path=': nil,
+                                   class: Safari::Service)
+        end
+        let(:service_manager) { instance_double(ServiceManager, uri: 'http://example.com') }
+        let(:valid_response) do
+          {status: 200,
+           body: {value: {sessionId: 0, capabilities: {browserName: 'safari'}}}.to_json,
+           headers: {content_type: 'application/json'}}
+        end
+        let(:finder) { instance_double(DriverFinder, browser_path?: false, driver_path: '/path/to/driver') }
+
+        def expect_request(body: nil, endpoint: nil)
+          body = (body || {capabilities: {alwaysMatch: {browserName: 'safari'}}}).to_json
+          endpoint ||= "#{service_manager.uri}/session"
+          stub_request(:post, endpoint).with(body: body).to_return(valid_response)
+        end
 
         before do
-          allow(Remote::Capabilities).to receive(:safari).and_return(caps)
-          allow(Service).to receive(:binary_path).and_return('/foo')
-          allow(Service).to receive(:new).and_return(service)
+          allow(Service).to receive_messages(new: service)
         end
 
-        it 'accepts server URL' do
-          expect(Service).not_to receive(:new)
-          expect(http).to receive(:server_url=).with(URI.parse('http://example.com:4321'))
+        it 'uses DriverFinder when provided Service without path' do
+          allow(DriverFinder).to receive(:new).and_return(finder)
+          expect_request
+          options = Options.new
 
-          Driver.new(http_client: http, url: 'http://example.com:4321')
+          described_class.new(service: service, options: options)
+          expect(finder).to have_received(:driver_path)
         end
 
-        it 'takes desired capabilities' do
-          custom_caps = Remote::Capabilities.new
-          custom_caps['foo'] = 'bar'
+        it 'does not use DriverFinder when provided Service with path' do
+          expect_request
+          allow(service).to receive(:executable_path).and_return('path')
+          allow(DriverFinder).to receive(:new).and_return(finder)
 
-          expect(http).to receive(:call) do |_, _, payload|
-            expect(payload[:capabilities][:firstMatch][0]['foo']).to eq 'bar'
-            resp
-          end
+          described_class.new(service: service)
+          expect(finder).not_to have_received(:driver_path)
+        end
 
-          Driver.new(http_client: http, desired_capabilities: custom_caps)
+        it 'does not require any parameters' do
+          allow(DriverFinder).to receive(:new).and_return(finder)
+          expect_request
+
+          expect { described_class.new }.not_to raise_exception
+        end
+
+        it 'accepts provided Options as sole parameter' do
+          allow(DriverFinder).to receive(:new).and_return(finder)
+          opts = {automatic_inspection: true}
+          expect_request(body: {capabilities: {alwaysMatch: {browserName: 'safari',
+                                                             'safari:automaticInspection': true}}})
+
+          expect { described_class.new(options: Options.new(**opts)) }.not_to raise_exception
+        end
+
+        it 'does not accept Options of the wrong class' do
+          expect {
+            described_class.new(options: Options.chrome)
+          }.to raise_exception(ArgumentError, ':options must be an instance of Selenium::WebDriver::Safari::Options')
         end
       end
     end # Safari

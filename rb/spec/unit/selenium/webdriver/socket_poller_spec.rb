@@ -24,7 +24,7 @@ module Selenium
     describe SocketPoller do
       before(:context) do
         @server_thread = Thread.new do
-          server = TCPServer.open(9250)
+          server = TCPServer.open(Platform.localhost, 9250)
           Thread.current.thread_variable_set(:server, server)
           loop { server.accept.close }
         end
@@ -36,7 +36,7 @@ module Selenium
       end
 
       def poller(port)
-        described_class.new('localhost', port, 5, 0.05)
+        SocketPoller.new('localhost', port, 5, 0.05)
       end
 
       describe '#connected?' do
@@ -49,7 +49,7 @@ module Selenium
           wait  = Time.parse('2010-01-01 00:00:04')
           stop  = Time.parse('2010-01-01 00:00:06')
 
-          expect(Process).to receive(:clock_gettime).and_return(start, wait, stop)
+          allow(Process).to receive(:clock_gettime).and_return(start, wait, stop)
           expect(poller(9251)).not_to be_connected
         end
       end
@@ -64,7 +64,7 @@ module Selenium
           wait  = Time.parse('2010-01-01 00:00:04').to_f
           stop  = Time.parse('2010-01-01 00:00:06').to_f
 
-          expect(Process).to receive(:clock_gettime).and_return(start, wait, stop)
+          allow(Process).to receive(:clock_gettime).and_return(start, wait, stop)
           expect(poller(9250)).not_to be_closed
         end
       end

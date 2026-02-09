@@ -25,6 +25,7 @@ goog.require('bot.userAgent');
 goog.require('goog.dom.NodeType');
 goog.require('goog.string');
 goog.require('goog.userAgent');
+goog.require('goog.utils');
 
 
 /**
@@ -36,17 +37,17 @@ goog.require('goog.userAgent');
  * @return {Element} The first matching element found in the DOM, or null if no
  *     such element could be found.
  */
-bot.locators.css.single = function(target, root) {
-  if (!goog.isFunction(root['querySelector']) &&
-      // IE8 in non-compatibility mode reports querySelector as an object.
-      goog.userAgent.IE && bot.userAgent.isEngineVersion(8) &&
-      !goog.isObject(root['querySelector'])) {
+bot.locators.css.single = function (target, root) {
+  if (typeof root['querySelector'] !== 'function' &&
+    // IE8 in non-compatibility mode reports querySelector as an object.
+    goog.userAgent.IE && bot.userAgent.isEngineVersion(8) &&
+    !goog.utils.isObject(root['querySelector'])) {
     throw Error('CSS selection is not supported');
   }
 
   if (!target) {
     throw new bot.Error(bot.ErrorCode.INVALID_SELECTOR_ERROR,
-                        'No selector specified');
+      'No selector specified');
   }
 
   target = goog.string.trim(target);
@@ -56,7 +57,7 @@ bot.locators.css.single = function(target, root) {
     element = root.querySelector(target);
   } catch (e) {
     throw new bot.Error(bot.ErrorCode.INVALID_SELECTOR_ERROR,
-                        'An invalid or illegal selector was specified');
+      'An invalid or illegal selector was specified');
   }
 
   return element && element.nodeType == goog.dom.NodeType.ELEMENT ?
@@ -72,17 +73,17 @@ bot.locators.css.single = function(target, root) {
  *     search under.
  * @return {!IArrayLike} All matching elements, or an empty list.
  */
-bot.locators.css.many = function(target, root) {
-  if (!goog.isFunction(root['querySelectorAll']) &&
-      // IE8 in non-compatibility mode reports querySelector as an object.
-      goog.userAgent.IE && bot.userAgent.isEngineVersion(8) &&
-      !goog.isObject(root['querySelector'])) {
+bot.locators.css.many = function (target, root) {
+  if (typeof root['querySelectorAll'] !== 'function' &&
+    // IE8 in non-compatibility mode reports querySelector as an object.
+    goog.userAgent.IE && bot.userAgent.isEngineVersion(8) &&
+    !goog.utils.isObject(root['querySelector'])) {
     throw Error('CSS selection is not supported');
   }
 
   if (!target) {
     throw new bot.Error(bot.ErrorCode.INVALID_SELECTOR_ERROR,
-                        'No selector specified');
+      'No selector specified');
   }
 
   target = goog.string.trim(target);
@@ -91,6 +92,6 @@ bot.locators.css.many = function(target, root) {
     return root.querySelectorAll(target);
   } catch (e) {
     throw new bot.Error(bot.ErrorCode.INVALID_SELECTOR_ERROR,
-                        'An invalid or illegal selector was specified');
+      'An invalid or illegal selector was specified');
   }
 };

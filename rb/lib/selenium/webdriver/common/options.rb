@@ -20,16 +20,61 @@
 module Selenium
   module WebDriver
     class Options
+      W3C_OPTIONS = %i[browser_name browser_version platform_name accept_insecure_certs page_load_strategy proxy
+                       set_window_rect timeouts unhandled_prompt_behavior strict_file_interactability
+                       web_socket_url].freeze
+
+      GRID_OPTIONS = %i[enable_downloads].freeze
+
+      class << self
+        attr_reader :driver_path
+
+        def chrome(**)
+          Chrome::Options.new(**)
+        end
+
+        def firefox(**)
+          Firefox::Options.new(**)
+        end
+
+        def ie(**)
+          IE::Options.new(**)
+        end
+        alias internet_explorer ie
+
+        def edge(**)
+          Edge::Options.new(**)
+        end
+        alias microsoftedge edge
+
+        def safari(**)
+          Safari::Options.new(**)
+        end
+
+        def set_capabilities
+          (W3C_OPTIONS + GRID_OPTIONS + self::CAPABILITIES.keys).each do |key|
+            next if method_defined? key
+
+            define_method key do
+              @options[key]
+            end
+
+            define_method :"#{key}=" do |value|
+              @options[key] = value
+            end
+          end
+        end
+      end
+
       attr_accessor :options
 
-      def initialize(options: nil, **opts)
-        @options = if options
-                     WebDriver.logger.deprecate(":options as keyword for initializing #{self.class}",
-                                                "custom values directly in #new constructor")
-                     opts.merge(options)
-                   else
-                     opts
-                   end
+      def initialize(**opts)
+        self.class.set_capabilities
+
+        opts[:web_socket_url] = opts.delete(:bidi) if opts.key?(:bidi)
+
+        @options = opts
+        @options[:browser_name] = self.class::BROWSER
       end
 
       #
@@ -43,9 +88,26 @@ module Selenium
       # @param [Boolean, String, Integer] value Value of the option
       #
 
-      def add_option(name, value)
+      def add_option(name, value = nil)
+        name, value = name.first if value.nil? && name.is_a?(Hash)
         @options[name] = value
       end
+
+      def enable_bidi!
+        @options[:web_socket_url] = true
+      end
+
+      def bidi?
+        !!@options[:web_socket_url]
+      end
+
+      def ==(other)
+        return false unless other.is_a? self.class
+
+        as_json == other.as_json
+      end
+
+      alias eql? ==
 
       #
       # @api private
@@ -54,22 +116,60 @@ module Selenium
       def as_json(*)
         options = @options.dup
 
-        opts = self.class::CAPABILITIES.each_with_object({}) do |(capability_alias, capability_name), hash|
+        downloads = options.delete(:enable_downloads)
+        options['se:downloadsEnabled'] = downloads unless downloads.nil?
+        w3c_options = process_w3c_options(options)
+
+        browser_options = self.class::CAPABILITIES.each_with_object({}) do |(capability_alias, capability_name), hash|
           capability_value = options.delete(capability_alias)
           hash[capability_name] = capability_value unless capability_value.nil?
         end
-        opts.merge(options)
+
+        raise Error::WebDriverError, "These options are not w3c compliant: #{options}" unless options.empty?
+
+        browser_options = {self.class::KEY => browser_options} if defined?(self.class::KEY)
+
+        process_browser_options(browser_options)
+        generate_as_json(w3c_options.merge(browser_options))
       end
 
       private
 
-      def generate_as_json(value)
-        if value.respond_to?(:as_json)
+      def w3c?(key)
+        W3C_OPTIONS.include?(key) || key.to_s.include?(':')
+      end
+
+      def process_w3c_options(options)
+        w3c_options = options.select { |key, val| w3c?(key) && !val.nil? }
+        w3c_options[:unhandled_prompt_behavior] &&=
+          process_unhandled_prompt_behavior_value(w3c_options[:unhandled_prompt_behavior])
+        options.delete_if { |key, _val| w3c?(key) }
+        w3c_options
+      end
+
+      def process_unhandled_prompt_behavior_value(value)
+        if value.is_a?(Hash)
+          value.transform_values { |v| process_unhandled_prompt_behavior_value(v) }
+        else
+          value&.to_s&.tr('_', ' ')
+        end
+      end
+
+      def process_browser_options(_browser_options)
+        nil
+      end
+
+      def camelize?(_key)
+        true
+      end
+
+      def generate_as_json(value, camelize_keys: true)
+        if value.is_a?(Hash)
+          process_json_hash(value, camelize_keys)
+        elsif value.respond_to?(:as_json)
           value.as_json
-        elsif value.is_a?(Hash)
-          value.each_with_object({}) { |(key, val), hash| hash[convert_json_key(key)] = generate_as_json(val) }
         elsif value.is_a?(Array)
-          value.map(&method(:generate_as_json))
+          value.map { |val| generate_as_json(val, camelize_keys: camelize_keys) }
         elsif value.is_a?(Symbol)
           value.to_s
         else
@@ -77,15 +177,26 @@ module Selenium
         end
       end
 
-      def convert_json_key(key)
-        key = camel_case(key) if key.is_a?(Symbol)
+      def process_json_hash(value, camelize_keys)
+        value.each_with_object({}) do |(key, val), hash|
+          next if val.respond_to?(:empty?) && val.empty?
+
+          camelize = camelize_keys ? camelize?(key) : false
+          key = convert_json_key(key, camelize: camelize)
+          hash[key] = generate_as_json(val, camelize_keys: camelize)
+        end
+      end
+
+      def convert_json_key(key, camelize: true)
+        key = key.to_s if key.is_a?(Symbol)
+        key = camel_case(key) if camelize
         return key if key.is_a?(String)
 
         raise TypeError, "expected String or Symbol, got #{key.inspect}:#{key.class}"
       end
 
       def camel_case(str)
-        str.to_s.gsub(/_([a-z])/) { Regexp.last_match(1).upcase }
+        str.gsub(/_([a-z])/) { Regexp.last_match(1)&.upcase }
       end
     end # Options
   end # WebDriver

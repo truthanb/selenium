@@ -1,37 +1,884 @@
-genrule(
-    name = "get-attribute",
-    srcs = ["//javascript/webdriver/atoms:get-attribute.js"],
-    outs = ["selenium/webdriver/remote/getAttribute.js"],
-    cmd = "cp $< $@",
+load("@aspect_bazel_lib//lib:copy_directory.bzl", "copy_directory")
+load("@bazel_skylib//rules:select_file.bzl", "select_file")
+load("@py_dev_requirements//:requirements.bzl", "requirement")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
+load("@rules_pkg//pkg:pkg.bzl", "pkg_tar")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@rules_python//python:packaging.bzl", "py_package", "py_wheel")
+load("@rules_python//python:pip.bzl", "compile_pip_requirements")
+load("@rules_python//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
+load("//common:defs.bzl", "copy_file")
+load("//py:defs.bzl", "generate_devtools", "py_test_suite")
+load("//py/private:browsers.bzl", "BROWSERS")
+load("//py/private:import.bzl", "py_import")
+
+exports_files(
+    ["pyproject.toml"],
+    visibility = ["//py:__subpackages__"],
 )
 
-genrule(
-    name = "is-displayed",
-    srcs = ["//javascript/atoms/fragments:is-displayed.js"],
-    outs = ["selenium/webdriver/remote/isDisplayed.js"],
-    cmd = "cp $< $@",
-)
-
-py_library(
-    name = "main",
-    srcs = glob(["selenium/**/*.py"]),
+py_binary(
+    name = "selenium-release",
+    srcs = [
+        "release-selenium.py",
+    ],
+    args = [
+        "upload",
+        "$(location :selenium-wheel)",
+        "$(location :selenium-sdist)",
+    ],
     data = [
+        ":selenium-sdist",
+        ":selenium-wheel",
+    ],
+    main = "release-selenium.py",
+    deps = [
+        requirement("twine"),
+    ],
+)
+
+py_binary(
+    name = "selenium-release-nightly",
+    srcs = [
+        "release-selenium.py",
+    ],
+    args = [
+        "upload",
+        "--repository",
+        "testpypi",
+        "$(location :selenium-wheel)",
+        "$(location :selenium-sdist)",
+    ],
+    data = [
+        ":selenium-sdist",
+        ":selenium-wheel",
+    ],
+    main = "release-selenium.py",
+    deps = [
+        requirement("twine"),
+    ],
+)
+
+compile_pip_requirements(
+    # base name for generated targets, typically "requirements"
+    name = "requirements",
+    requirements_in = ":requirements.txt",
+    requirements_txt = ":requirements_lock.txt",
+    tags = [
+        "skip-rbe",  # This test won't run on the RBE because of a lack of network connectivity
+    ],
+)
+
+SE_VERSION = "4.41.0.202601181916"
+
+BROWSER_VERSIONS = [
+    "v143",
+    "v144",
+    "v142",
+]
+
+TEST_DEPS = [
+    requirement("filetype"),
+    requirement("pytest"),
+    requirement("pytest-instafail"),
+    requirement("pytest-trio"),
+    requirement("pytest-mock"),
+    requirement("rich"),
+    requirement("zipp"),
+    "@rules_python//python/runfiles",
+]
+
+genrule(
+    name = "java-location",
+    srcs = [],
+    outs = ["java-location.txt"],
+    cmd = "echo $(JAVA) > $@",
+    toolchains = ["@bazel_tools//tools/jdk:current_java_runtime"],
+)
+
+copy_file(
+    name = "manager-linux",
+    src = "//common/manager:selenium-manager-linux",
+    out = "selenium/webdriver/common/linux/selenium-manager",
+)
+
+copy_file(
+    name = "manager-macos",
+    src = "//common/manager:selenium-manager-macos",
+    out = "selenium/webdriver/common/macos/selenium-manager",
+)
+
+copy_file(
+    name = "manager-windows",
+    src = "//common/manager:selenium-manager-windows",
+    out = "selenium/webdriver/common/windows/selenium-manager.exe",
+)
+
+copy_file(
+    name = "get-attribute",
+    src = "//javascript/webdriver/atoms:get-attribute.js",
+    out = "selenium/webdriver/remote/getAttribute.js",
+)
+
+copy_file(
+    name = "is-displayed",
+    src = "//javascript/atoms/fragments:is-displayed.js",
+    out = "selenium/webdriver/remote/isDisplayed.js",
+)
+
+copy_file(
+    name = "find-elements",
+    src = "//javascript/atoms/fragments:find-elements.js",
+    out = "selenium/webdriver/remote/findElements.js",
+)
+
+copy_file(
+    name = "mutation-listener",
+    src = "//javascript/cdp-support:mutation-listener.js",
+    out = "selenium/webdriver/common/mutation-listener.js",
+)
+
+copy_file(
+    name = "firefox-driver-prefs",
+    src = "//third_party/js/selenium:webdriver_json",
+    out = "selenium/webdriver/firefox/webdriver_prefs.json",
+)
+
+copy_file(
+    name = "webextensions-selenium-example-xpi",
+    testonly = True,
+    src = "//common/extensions:webextensions-selenium-example.xpi",
+    out = "test/extensions/webextensions-selenium-example.xpi",
+)
+
+copy_file(
+    name = "webextensions-selenium-example-zip",
+    testonly = True,
+    src = "//common/extensions:webextensions-selenium-example.zip",
+    out = "test/extensions/webextensions-selenium-example.zip",
+)
+
+copy_file(
+    name = "webextensions-selenium-example-unsigned-zip",
+    testonly = True,
+    src = "//common/extensions:webextensions-selenium-example-unsigned.zip",
+    out = "test/extensions/webextensions-selenium-example-unsigned.zip",
+)
+
+copy_file(
+    name = "webextensions-selenium-example-crx",
+    testonly = True,
+    src = "//common/extensions:webextensions-selenium-example.crx",
+    out = "test/extensions/webextensions-selenium-example.crx",
+)
+
+copy_directory(
+    name = "webextensions-selenium-example-dir",
+    testonly = True,
+    src = "//common/extensions:webextensions-selenium-example",
+    out = "test/extensions/webextensions-selenium-example",
+)
+
+copy_directory(
+    name = "webextensions-selenium-example-signed-dir",
+    testonly = True,
+    src = "//common/extensions:webextensions-selenium-example-signed",
+    out = "test/extensions/webextensions-selenium-example-signed",
+)
+
+select_file(
+    name = "global-license",
+    srcs = "//:license",
+    subpath = "LICENSE",
+)
+
+copy_file(
+    name = "license",
+    src = ":global-license",
+    out = "LICENSE",
+)
+
+copy_file(
+    name = "license-wheel",
+    src = ":global-license",
+    out = "selenium-%s.dist-info/LICENSE" % SE_VERSION,
+)
+
+select_file(
+    name = "global-notice",
+    srcs = "//:license",
+    subpath = "NOTICE",
+)
+
+copy_file(
+    name = "notice",
+    src = ":global-notice",
+    out = "NOTICE",
+)
+
+copy_file(
+    name = "notice-wheel",
+    src = ":global-notice",
+    out = "selenium-%s.dist-info/NOTICE" % SE_VERSION,
+)
+
+# ==============================================================================
+# Module Targets (following Ruby's modular pattern)
+# ==============================================================================
+
+# Exceptions and package init (no deps - foundational)
+py_library(
+    name = "exceptions",
+    srcs = [
+        "selenium/__init__.py",
+        "selenium/webdriver/__init__.py",
+    ] + glob(["selenium/common/**/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+)
+
+# Remote/wire protocol (foundational)
+py_library(
+    name = "remote",
+    srcs = glob(["selenium/webdriver/remote/**/*.py"]),
+    data = [
+        ":find-elements",
         ":get-attribute",
         ":is-displayed",
     ],
     imports = ["."],
     visibility = ["//visibility:public"],
+    deps = [
+        ":exceptions",
+        requirement("certifi"),
+        requirement("urllib3"),
+        requirement("websocket-client"),
+    ],
 )
 
-py_test(
+# BiDi protocol support
+py_library(
+    name = "bidi",
+    srcs = glob(["selenium/webdriver/common/bidi/**/*.py"]),
+    data = [":mutation-listener"],
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":exceptions",
+        ":remote",
+        requirement("trio"),
+        requirement("trio-websocket"),
+        requirement("websocket-client"),
+    ],
+)
+
+# Common utilities (shared by all browsers, includes devtools generated code)
+py_library(
+    name = "common",
+    srcs = glob(
+        ["selenium/webdriver/common/**/*.py"],
+        exclude = [
+            "selenium/webdriver/common/bidi/**",
+        ],
+    ),
+    data = [
+        ":manager-linux",
+        ":manager-macos",
+        ":manager-windows",
+    ] + [":create-cdp-srcs-" + n for n in BROWSER_VERSIONS],
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":bidi",
+        ":exceptions",
+        ":remote",
+        requirement("typing_extensions"),
+    ],
+)
+
+# Support utilities (wait conditions, event listeners, etc.)
+py_library(
+    name = "support",
+    srcs = glob(["selenium/webdriver/support/**/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common",
+        ":exceptions",
+        ":remote",
+    ],
+)
+
+# Chromium base (shared by Chrome and Edge)
+py_library(
+    name = "chromium",
+    srcs = glob(["selenium/webdriver/chromium/**/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common",
+        ":remote",
+    ],
+)
+
+# Chrome driver
+py_library(
+    name = "chrome",
+    srcs = glob(["selenium/webdriver/chrome/**/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [":chromium"],
+)
+
+# Edge driver
+py_library(
+    name = "edge",
+    srcs = glob(["selenium/webdriver/edge/**/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [":chromium"],
+)
+
+# Firefox driver
+py_library(
+    name = "firefox",
+    srcs = glob(["selenium/webdriver/firefox/**/*.py"]),
+    data = [":firefox-driver-prefs"],
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common",
+        ":remote",
+    ],
+)
+
+# Safari driver
+py_library(
+    name = "safari",
+    srcs = glob(["selenium/webdriver/safari/**/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common",
+        ":remote",
+    ],
+)
+
+# IE driver
+py_library(
+    name = "ie",
+    srcs = glob(["selenium/webdriver/ie/**/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common",
+        ":remote",
+    ],
+)
+
+# WebKitGTK driver
+py_library(
+    name = "webkitgtk",
+    srcs = glob(["selenium/webdriver/webkitgtk/**/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common",
+        ":remote",
+    ],
+)
+
+# WPEWebKit driver
+py_library(
+    name = "wpewebkit",
+    srcs = glob(["selenium/webdriver/wpewebkit/**/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common",
+        ":remote",
+    ],
+)
+
+# ==============================================================================
+# Aggregate Target (backwards compatible - includes all modules)
+# ==============================================================================
+
+py_library(
+    name = "selenium",
+    srcs = [],
+    data = ["selenium/py.typed"],
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":bidi",
+        ":chrome",
+        ":chromium",
+        ":common",
+        ":edge",
+        ":exceptions",
+        ":firefox",
+        ":ie",
+        ":remote",
+        ":safari",
+        ":support",
+        ":webkitgtk",
+        ":wpewebkit",
+    ],
+)
+
+py_package(
+    name = "selenium-pkg",
+    packages = [
+        "py.selenium",
+        "py.selenium.common",
+        "py.selenium.webdriver",
+        "py.selenium.webdriver.chrome",
+        "py.selenium.webdriver.chromium",
+        "py.selenium.webdriver.common",
+        "py.selenium.webdriver.common.bidi",
+        "py.selenium.webdriver.common.devtools",
+        "py.selenium.webdriver.edge",
+        "py.selenium.webdriver.firefox",
+        "py.selenium.webdriver.remote",
+        "py.selenium.webdriver.safari",
+    ],
+    deps = [":selenium"],
+)
+
+pkg_files(
+    name = "selenium-sdist-pkg",
+    srcs = [
+        "CHANGES",
+        "README.rst",
+        "pyproject.toml",
+        ":license",
+        ":notice",
+        ":selenium-pkg",
+        ":selenium-pkginfo",
+        "//rust:selenium_manager_srcs",
+    ],
+    excludes = [
+        ":manager-linux",
+        ":manager-macos",
+        ":manager-windows",
+    ],
+    strip_prefix = strip_prefix.from_pkg(),
+)
+
+pkg_tar(
+    name = "selenium-sdist",
+    srcs = [":selenium-sdist-pkg"],
+    extension = "tar.gz",
+    mode = "0644",
+    package_dir = "selenium-%s" % SE_VERSION,
+    package_file_name = "selenium-%s.tar.gz" % SE_VERSION,
+)
+
+genrule(
+    name = "selenium-pkginfo",
+    srcs = [":selenium-wheel-lib"],
+    outs = ["PKG-INFO"],
+    cmd = "cp $(location :selenium-wheel-lib)/selenium-%s.dist-info/METADATA $@" % SE_VERSION,
+)
+
+py_import(
+    name = "selenium-wheel-lib",
+    wheel = ":selenium-wheel",
+)
+
+py_wheel(
+    name = "selenium-wheel",
+    classifiers = [
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Operating System :: POSIX",
+        "Operating System :: Microsoft :: Windows",
+        "Operating System :: MacOS :: MacOS X",
+        "Topic :: Software Development :: Testing",
+        "Topic :: Software Development :: Libraries",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
+    ],
+    description_file = "README.rst",
+    distribution = "selenium",
+    homepage = "https://www.selenium.dev",
+    license = "Apache-2.0",
+    python_requires = ">=3.10",
+    python_tag = "py3",
+    requires = [
+        "certifi>=2026.1.4",
+        "trio>=0.31.0,<1.0",
+        "trio-websocket>=0.12.2,<1.0",
+        "typing_extensions>=4.15.0,<5.0",
+        "urllib3[socks]>=2.6.3,<3.0",
+        "websocket-client>=1.8.0,<2.0",
+    ],
+    strip_path_prefixes = [
+        "py/",
+    ],
+    summary = "Official Python bindings for Selenium WebDriver",
+    tags = [
+        "release-artifact",
+    ],
+    version = SE_VERSION,
+    visibility = ["//visibility:public"],
+    deps = [
+        ":license-wheel",
+        ":notice-wheel",
+        ":selenium-pkg",
+    ],
+)
+
+py_library(
+    name = "init-tree",
+    testonly = True,
+    srcs = [
+        "conftest.py",
+        "test/__init__.py",
+        "test/selenium/__init__.py",
+        "test/selenium/webdriver/__init__.py",
+        "test/selenium/webdriver/chrome/__init__.py",
+        "test/selenium/webdriver/common/__init__.py",
+        "test/selenium/webdriver/common/network.py",
+        "test/selenium/webdriver/common/webserver.py",
+        "test/selenium/webdriver/firefox/__init__.py",
+        "test/selenium/webdriver/safari/conftest.py",
+        "test/selenium/webdriver/support/__init__.py",
+    ],
+    data = [
+        "pyproject.toml",
+        "test/selenium/webdriver/common/test_file.txt",
+        "test/selenium/webdriver/common/test_file2.txt",
+        ":webextensions-selenium-example-crx",
+        ":webextensions-selenium-example-dir",
+        ":webextensions-selenium-example-signed-dir",
+        ":webextensions-selenium-example-unsigned-zip",
+        ":webextensions-selenium-example-xpi",
+        ":webextensions-selenium-example-zip",
+    ],
+    imports = ["."],
+    deps = [
+        ":webserver",
+    ],
+)
+
+py_binary(
+    name = "generate",
+    srcs = ["generate.py"],
+    srcs_version = "PY3",
+    deps = [requirement("inflection")],
+)
+
+[generate_devtools(
+    name = "create-cdp-srcs-{}".format(devtools_version),
+    browser_protocol = "//common/devtools/chromium/{}:browser_protocol".format(devtools_version),
+    generator = ":generate",
+    js_protocol = "//common/devtools/chromium/{}:js_protocol".format(devtools_version),
+    outdir = "selenium/webdriver/common/devtools/{}".format(devtools_version),
+    protocol_version = devtools_version,
+) for devtools_version in BROWSER_VERSIONS]
+
+py_test_suite(
     name = "unit",
     size = "small",
     srcs = glob([
         "test/unit/**/*.py",
-    ]) + [ "test/run_pytest.py" ],
-    main = "test/run_pytest.py",
-    deps = [
-        ":main",
+    ]),
+    args = [
+        "--instafail",
     ],
-    legacy_create_init = False,
+    deps = [
+        ":init-tree",
+        ":selenium",
+    ] + TEST_DEPS,
+)
+
+py_library(
+    name = "webserver",
+    testonly = True,
+    srcs = [
+        "test/selenium/webdriver/common/network.py",
+        "test/selenium/webdriver/common/webserver.py",
+    ],
+    data = [
+        "//common/src/web",
+    ],
+    deps = [],
+)
+
+BIDI_TESTS = glob(["test/selenium/webdriver/common/**/*bidi*_tests.py"])
+
+# Browser-specific test configuration
+BROWSER_TESTS = {
+    "chrome": {
+        "browser_srcs": ["test/selenium/webdriver/chrome/**/*.py"],
+        "deps": [
+            ":chrome",
+            ":common",
+            ":support",
+        ],
+        "bidi": True,
+    },
+    "edge": {
+        "browser_srcs": ["test/selenium/webdriver/edge/**/*.py"],
+        "deps": [
+            ":edge",
+            ":common",
+            ":support",
+        ],
+        "bidi": True,
+    },
+    "firefox": {
+        "browser_srcs": [
+            "test/selenium/webdriver/firefox/**/*.py",
+        ],
+        "deps": [
+            ":firefox",
+            ":common",
+            ":support",
+        ],
+        "extra_excludes": ["test/selenium/webdriver/common/devtools_tests.py"],
+        "bidi": True,
+    },
+    "ie": {
+        "browser_srcs": ["test/selenium/webdriver/ie/**/*.py"],
+        "deps": [
+            ":ie",
+            ":common",
+            ":support",
+        ],
+    },
+    "safari": {
+        "browser_srcs": ["test/selenium/webdriver/safari/**/*.py"],
+        "deps": [
+            ":safari",
+            ":common",
+            ":support",
+        ],
+    },
+}
+
+# Generate test-<browser> targets (non-bidi)
+[
+    py_test_suite(
+        name = "test-%s" % browser,
+        size = "large",
+        srcs = glob(
+            [
+                "test/selenium/webdriver/common/**/*.py",
+                "test/selenium/webdriver/support/**/*.py",
+            ] + BROWSER_TESTS[browser]["browser_srcs"],
+            exclude = BIDI_TESTS + ["test/selenium/webdriver/common/print_pdf_tests.py"] +
+                      BROWSER_TESTS[browser].get("extra_excludes", []),
+        ),
+        args = [
+            "--instafail",
+        ] + BROWSERS[browser]["args"],
+        data = BROWSERS[browser]["data"],
+        env_inherit = ["DISPLAY"],
+        tags = ["no-sandbox"] + BROWSERS[browser]["tags"],
+        deps = [
+            ":init-tree",
+            ":webserver",
+        ] + BROWSER_TESTS[browser]["deps"] + TEST_DEPS,
+    )
+    for browser in BROWSER_TESTS.keys()
+]
+
+# Generate test-<browser>-bidi targets (only for browsers with bidi=True)
+[
+    py_test_suite(
+        name = "test-%s-bidi" % browser,
+        size = "large",
+        srcs = glob(
+            [
+                "test/selenium/webdriver/common/**/*.py",
+                "test/selenium/webdriver/support/**/*.py",
+            ] + BROWSER_TESTS[browser]["browser_srcs"],
+            exclude = ["test/selenium/webdriver/common/print_pdf_tests.py"] +
+                      BROWSER_TESTS[browser].get("extra_excludes", []),
+        ),
+        args = [
+            "--instafail",
+            "--bidi",
+        ] + BROWSERS[browser]["args"],
+        data = BROWSERS[browser]["data"],
+        env_inherit = ["DISPLAY"],
+        tags = ["no-sandbox"] + BROWSERS[browser]["tags"],
+        deps = [
+            ":init-tree",
+            ":webserver",
+        ] + BROWSER_TESTS[browser]["deps"] + TEST_DEPS,
+    )
+    for browser in BROWSER_TESTS.keys()
+    if BROWSER_TESTS[browser].get("bidi", False)
+]
+
+# Generate test-<browser>-remote targets (chrome and firefox only)
+[
+    py_test_suite(
+        name = "test-%s-remote" % browser,
+        size = "large",
+        srcs = glob(
+            [
+                "test/selenium/webdriver/common/**/*.py",
+                "test/selenium/webdriver/remote/**/*.py",
+                "test/selenium/webdriver/support/**/*.py",
+            ] + BROWSER_TESTS[browser]["browser_srcs"],
+            exclude = BIDI_TESTS + ["test/selenium/webdriver/common/print_pdf_tests.py"] +
+                      BROWSER_TESTS[browser].get("extra_excludes", []),
+        ),
+        args = [
+            "--instafail",
+            "--remote",
+        ] + BROWSERS[browser]["args"],
+        data = BROWSERS[browser]["data"] + [
+            ":java-location",
+            "//java/src/org/openqa/selenium/grid:selenium_server_deploy.jar",
+            "@bazel_tools//tools/jdk:current_java_runtime",
+        ],
+        env = {
+            "SE_BAZEL_JAVA_LOCATION": "$(rootpath :java-location)",
+        },
+        env_inherit = ["DISPLAY"],
+        tags = [
+            "no-sandbox",
+            "remote",
+            "%s-remote" % browser,
+        ],
+        deps = [
+            ":init-tree",
+            ":webserver",
+        ] + BROWSER_TESTS[browser]["deps"] + TEST_DEPS,
+    )
+    for browser in [
+        "chrome",
+        "firefox",
+    ]
+]
+
+test_suite(
+    name = "test-remote",
+    tags = ["remote"],
+    tests = [
+        ":test-chrome-remote",
+        ":test-firefox-remote",
+    ],
+)
+
+py_test_suite(
+    name = "test-webkitgtk",
+    size = "large",
+    srcs = glob([
+        "test/selenium/webdriver/common/**/*.py",
+        "test/selenium/webdriver/support/**/*.py",
+    ]),
+    args = [
+        "--instafail",
+        "--driver=webkitgtk",
+        "--browser-binary=MiniBrowser",
+        "--browser-args=--automation",
+    ],
+    tags = [
+        "exclusive-if-local",
+        "no-sandbox",
+        "skip-rbe",
+    ],
+    deps = [
+        ":common",
+        ":init-tree",
+        ":support",
+        ":webkitgtk",
+        ":webserver",
+    ] + TEST_DEPS,
+)
+
+py_test_suite(
+    name = "test-wpewebkit",
+    size = "large",
+    srcs = glob([
+        "test/selenium/webdriver/common/**/*.py",
+        "test/selenium/webdriver/support/**/*.py",
+    ]),
+    args = [
+        "--instafail",
+        "--driver=wpewebkit",
+        "--browser-binary=MiniBrowser",
+        "--browser-args=--automation --headless",
+    ],
+    tags = [
+        "exclusive-if-local",
+        "no-sandbox",
+        "skip-rbe",
+    ],
+    deps = [
+        ":common",
+        ":init-tree",
+        ":support",
+        ":webserver",
+        ":wpewebkit",
+    ] + TEST_DEPS,
+)
+
+py_binary(
+    name = "generate-api-listing",
+    srcs = ["generate_api_module_listing.py"],
+    main = "generate_api_module_listing.py",
+    deps = [":selenium"],
+)
+
+py_binary(
+    name = "sphinx-autogen",
+    srcs = ["run_sphinx_autogen.py"],
+    main = "run_sphinx_autogen.py",
+    deps = [
+        ":selenium",
+        requirement("sphinx"),
+    ],
+)
+
+sphinx_build_binary(
+    name = "sphinx-build",
+    deps = [
+        ":selenium",
+        requirement("sphinx"),
+        requirement("sphinx-material"),
+    ],
+)
+
+sphinx_docs(
+    name = "docs",
+    srcs = glob(["docs/source/**/*.rst"]) + ["docs/source/conf.py"],
+    config = "docs/source/conf.py",
+    formats = ["html"],
+    sphinx = ":sphinx-build",
+)
+
+py_binary(
+    name = "mypy",
+    srcs = ["run_mypy.py"],
+    data = [
+        "pyproject.toml",
+        ":selenium",
+    ],
+    main = "run_mypy.py",
+    deps = [
+        ":selenium",
+        requirement("mypy"),
+    ],
+)
+
+alias(
+    name = "ruff-check",
+    actual = "//py/private:ruff_check",
+)
+
+alias(
+    name = "ruff-format",
+    actual = "//py/private:ruff_format",
 )

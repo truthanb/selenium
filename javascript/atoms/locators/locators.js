@@ -23,13 +23,15 @@
 goog.provide('bot.locators');
 
 goog.require('bot');
+goog.require('bot.Error');
+goog.require('bot.ErrorCode');
 goog.require('bot.locators.className');
 goog.require('bot.locators.css');
-goog.require('bot.locators.friendly');
 goog.require('bot.locators.id');
 goog.require('bot.locators.linkText');
 goog.require('bot.locators.name');
 goog.require('bot.locators.partialLinkText');
+goog.require('bot.locators.relative');
 goog.require('bot.locators.tagName');
 goog.require('bot.locators.xpath');
 
@@ -59,7 +61,7 @@ bot.locators.STRATEGIES_ = {
   'css': bot.locators.css,
   'css selector': bot.locators.css,
 
-  'friendly': bot.locators.friendly,
+  'relative': bot.locators.relative,
 
   'id': bot.locators.id,
 
@@ -84,7 +86,7 @@ bot.locators.STRATEGIES_ = {
  * @param {string} name The name of the strategy.
  * @param {!bot.locators.strategy} strategy The strategy to use.
  */
-bot.locators.add = function(name, strategy) {
+bot.locators.add = function (name, strategy) {
   bot.locators.STRATEGIES_[name] = strategy;
 };
 
@@ -94,9 +96,9 @@ bot.locators.add = function(name, strategy) {
  * Object.prototype, if any exists.
  *
  * @param {Object} target The object to pick a key from.
- * @return {string?} The key or null if the object is empty.
+ * @return {?string} The key or null if the object is empty.
  */
-bot.locators.getOnlyKey = function(target) {
+bot.locators.getOnlyKey = function (target) {
   for (var k in target) {
     if (target.hasOwnProperty(k)) {
       return k;
@@ -119,18 +121,18 @@ bot.locators.getOnlyKey = function(target) {
  * @return {Element} The first matching element found in the DOM, or null if no
  *     such element could be found.
  */
-bot.locators.findElement = function(target, opt_root) {
+bot.locators.findElement = function (target, opt_root) {
   var key = bot.locators.getOnlyKey(target);
 
   if (key) {
     var strategy = bot.locators.STRATEGIES_[key];
-    if (strategy && goog.isFunction(strategy.single)) {
+    if (strategy && typeof strategy.single === 'function') {
       var root = opt_root || bot.getDocument();
       return strategy.single(target[key], root);
     }
   }
   throw new bot.Error(bot.ErrorCode.INVALID_ARGUMENT,
-                      'Unsupported locator strategy: ' + key);
+    'Unsupported locator strategy: ' + key);
 };
 
 
@@ -147,16 +149,16 @@ bot.locators.findElement = function(target, opt_root) {
  * @return {!IArrayLike.<Element>} All matching elements found in the
  *     DOM.
  */
-bot.locators.findElements = function(target, opt_root) {
+bot.locators.findElements = function (target, opt_root) {
   var key = bot.locators.getOnlyKey(target);
 
   if (key) {
     var strategy = bot.locators.STRATEGIES_[key];
-    if (strategy && goog.isFunction(strategy.many)) {
+    if (strategy && typeof strategy.many === 'function') {
       var root = opt_root || bot.getDocument();
       return strategy.many(target[key], root);
     }
   }
   throw new bot.Error(bot.ErrorCode.INVALID_ARGUMENT,
-                      'Unsupported locator strategy: ' + key);
+    'Unsupported locator strategy: ' + key);
 };

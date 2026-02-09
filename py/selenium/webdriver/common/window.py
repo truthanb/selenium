@@ -14,16 +14,11 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
-"""
-The WindowTypes implementation.
-"""
-
-from __future__ import unicode_literals
+"""The WindowTypes implementation."""
 
 
-class WindowTypes(object):
+class WindowTypes:
     """Set of supported window types."""
 
-    TAB = 'tab'
-    WINDOW = 'window'
+    TAB = "tab"
+    WINDOW = "window"

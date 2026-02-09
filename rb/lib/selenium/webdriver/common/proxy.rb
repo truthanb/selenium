@@ -49,7 +49,7 @@ module Selenium
         proxy = new
 
         ALLOWED.each do |k, v|
-          proxy.send("#{k}=", data[v]) if data.key?(v)
+          proxy.send(:"#{k}=", data[v]) if data.key?(v)
         end
 
         proxy
@@ -60,7 +60,7 @@ module Selenium
 
         opts.each do |k, v|
           if ALLOWED.key?(k)
-            send("#{k}=", v)
+            send(:"#{k}=", v)
           else
             not_allowed << k
           end
@@ -74,9 +74,10 @@ module Selenium
       def ==(other)
         other.is_a?(self.class) && as_json == other.as_json
       end
-      alias_method :eql?, :==
+      alias eql? ==
 
       def ftp=(value)
+        WebDriver.logger.deprecate('FTP proxy support', nil, id: :ftp_proxy)
         self.type = :manual
         @ftp = value
       end
@@ -127,7 +128,10 @@ module Selenium
       end
 
       def type=(type)
-        raise ArgumentError, "invalid proxy type: #{type.inspect}, expected one of #{TYPES.keys.inspect}" unless TYPES.key? type
+        unless TYPES.key? type
+          raise ArgumentError,
+                "invalid proxy type: #{type.inspect}, expected one of #{TYPES.keys.inspect}"
+        end
 
         if defined?(@type) && type != @type
           raise ArgumentError, "incompatible proxy type #{type.inspect} (already set to #{@type.inspect})"
@@ -138,10 +142,10 @@ module Selenium
 
       def as_json(*)
         json_result = {
-          'proxyType' => TYPES[type],
+          'proxyType' => TYPES[type].downcase,
           'ftpProxy' => ftp,
           'httpProxy' => http,
-          'noProxy' => no_proxy,
+          'noProxy' => no_proxy.is_a?(String) ? no_proxy.split(', ') : no_proxy,
           'proxyAutoconfigUrl' => pac,
           'sslProxy' => ssl,
           'autodetect' => auto_detect,
@@ -149,7 +153,7 @@ module Selenium
           'socksUsername' => socks_username,
           'socksPassword' => socks_password,
           'socksVersion' => socks_version
-        }.delete_if { |_k, v| v.nil? }
+        }.compact
 
         json_result if json_result.length > 1
       end

@@ -36,6 +36,7 @@ module Selenium
       # @option opts [String] :value A value
       # @option opts [String] :path ('/') A path
       # @option opts [String] :secure (false) A boolean
+      # @option opts [String] :same_site (Strict or Lax) currently supported only in chrome 80+ versions
       # @option opts [Time,DateTime,Numeric,nil] :expires (nil) Expiry date, either as a Time, DateTime, or seconds since epoch.
       #
       # @raise [ArgumentError] if :name or :value is not specified
@@ -45,11 +46,17 @@ module Selenium
         raise ArgumentError, 'name is required' unless opts[:name]
         raise ArgumentError, 'value is required' unless opts[:value]
 
-        opts[:path] ||= '/'
+        # NOTE: This is required because of https://bugs.chromium.org/p/chromedriver/issues/detail?id=3732
         opts[:secure] ||= false
 
+        same_site = opts.delete(:same_site)
+        opts[:sameSite] = same_site if same_site
+
+        http_only = opts.delete(:http_only)
+        opts[:httpOnly] = http_only if http_only
+
         obj = opts.delete(:expires)
-        opts[:expiry] = seconds_from(obj).to_i if obj
+        opts[:expiry] = seconds_from(obj).to_int if obj
 
         @bridge.add_cookie opts
       end
@@ -58,7 +65,7 @@ module Selenium
       # Get the cookie with the given name
       #
       # @param [String] name the name of the cookie
-      # @return [Hash, nil] the cookie, or nil if it wasn't found.
+      # @return [Hash] the cookie, or throws a NoSuchCookieError if it wasn't found.
       #
 
       def cookie_named(name)
@@ -72,6 +79,8 @@ module Selenium
       #
 
       def delete_cookie(name)
+        raise ArgumentError, 'Cookie name cannot be null or empty' if name.nil? || name.to_s.strip.empty?
+
         @bridge.delete_cookie name
       end
 
@@ -96,42 +105,6 @@ module Selenium
       def timeouts
         @timeouts ||= Timeouts.new(@bridge)
       end
-
-      #
-      # @api beta This API may be changed or removed in a future release.
-      #
-
-      def logs
-        @logs ||= Logs.new(@bridge)
-      end
-
-      #
-      # Create a new top-level browsing context
-      # https://w3c.github.io/webdriver/#new-window
-      # @param type [Symbol] Supports two values: :tab and :window.
-      #  Use :tab if you'd like the new window to share an OS-level window
-      #  with the current browsing context.
-      #  Use :window otherwise
-      # @return [String] The value of the window handle
-      #
-      def new_window(type = :tab)
-        case type
-        when :tab, :window
-          result = @bridge.new_window(type)
-          unless result.key?('handle')
-            raise UnknownError, "the driver did not return a handle. " \
-                                "The returned result: #{result.inspect}"
-          end
-          result['handle']
-        else
-          raise ArgumentError, "invalid argument for type. Got: '#{type.inspect}'. " \
-                               "Try :tab or :window"
-        end
-      end
-
-      #
-      # @api beta This API may be changed or removed in a future release.
-      #
 
       def window
         @window ||= Window.new(@bridge)
@@ -169,6 +142,8 @@ module Selenium
           path: cookie['path'],
           domain: cookie['domain'] && strip_port(cookie['domain']),
           expires: cookie['expiry'] && datetime_at(cookie['expiry']),
+          same_site: cookie['sameSite'],
+          http_only: cookie['httpOnly'],
           secure: cookie['secure']
         }
       end

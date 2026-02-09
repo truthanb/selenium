@@ -1,0 +1,13 @@
+module Selenium
+  module WebDriver
+    module DriverExtensions
+      module HasDevTools
+        include _Driver
+
+        @devtools: Hash[String, DevTools]
+
+        def devtools: (?target_type: String) -> DevTools
+      end
+    end
+  end
+end

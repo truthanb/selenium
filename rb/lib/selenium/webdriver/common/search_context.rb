@@ -30,9 +30,18 @@ module Selenium
         link_text: 'link text',
         name: 'name',
         partial_link_text: 'partial link text',
+        relative: 'relative',
         tag_name: 'tag name',
         xpath: 'xpath'
       }.freeze
+
+      class << self
+        attr_accessor :extra_finders
+
+        def finders
+          FINDERS.merge(extra_finders || {})
+        end
+      end
 
       #
       # Find the first element matching the given arguments
@@ -56,13 +65,10 @@ module Selenium
       def find_element(*args)
         how, what = extract_args(args)
 
-        by = FINDERS[how.to_sym]
+        by = SearchContext.finders[how.to_sym]
         raise ArgumentError, "cannot find element by #{how.inspect}" unless by
 
-        bridge.find_element_by by, what.to_s, ref
-      rescue Selenium::WebDriver::Error::TimeoutError
-        # Implicit Wait times out in Edge
-        raise Selenium::WebDriver::Error::NoSuchElementError
+        bridge.find_element_by by, what, ref
       end
 
       #
@@ -74,13 +80,10 @@ module Selenium
       def find_elements(*args)
         how, what = extract_args(args)
 
-        by = FINDERS[how.to_sym]
+        by = SearchContext.finders[how.to_sym]
         raise ArgumentError, "cannot find elements by #{how.inspect}" unless by
 
-        bridge.find_elements_by by, what.to_s, ref
-      rescue Selenium::WebDriver::Error::TimeoutError
-        # Implicit Wait times out in Edge
-        []
+        bridge.find_elements_by by, what, ref
       end
 
       private
@@ -92,7 +95,10 @@ module Selenium
         when 1
           arg = args.first
 
-          raise ArgumentError, "expected #{arg.inspect}:#{arg.class} to respond to #shift" unless arg.respond_to?(:shift)
+          unless arg.respond_to?(:shift)
+            raise ArgumentError,
+                  "expected #{arg.inspect}:#{arg.class} to respond to #shift"
+          end
 
           # this will be a single-entry hash, so use #shift over #first or #[]
           arr = arg.dup.shift

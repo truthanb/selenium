@@ -21,160 +21,168 @@ require File.expand_path('../spec_helper', __dir__)
 
 module Selenium
   module WebDriver
-    describe Service do
-      let(:service_path) { "/path/to/#{Edge::Service::EXECUTABLE}" }
+    module Edge
+      describe Service do
+        describe '#new' do
+          let(:service_path) { "/path/to/#{Service::EXECUTABLE}" }
 
-      before do
-        allow(Platform).to receive(:assert_executable).and_return(true)
+          before do
+            allow(Platform).to receive(:assert_executable)
+            allow(WebDriver.logger).to receive(:debug?).and_return(false)
+            described_class.driver_path = nil
+          end
+
+          it 'uses default port and nil path' do
+            service = described_class.new
+
+            expect(service.port).to eq Service::DEFAULT_PORT
+            expect(service.host).to eq Platform.localhost
+            expect(service.executable_path).to be_nil
+          end
+
+          it 'uses provided path and port' do
+            path = 'foo'
+            port = 5678
+
+            service = described_class.new(path: path, port: port)
+
+            expect(service.executable_path).to eq path
+            expect(service.port).to eq port
+            expect(service.host).to eq Platform.localhost
+          end
+
+          it 'does not create args by default' do
+            service = described_class.new
+
+            expect(service.extra_args).to be_empty
+          end
+
+          it 'uses sets log path to stdout' do
+            service = described_class.chrome(log: :stdout)
+
+            expect(service.log).to eq $stdout
+          end
+
+          it 'uses sets log path to stderr' do
+            service = described_class.chrome(log: :stderr)
+
+            expect(service.log).to eq $stderr
+          end
+
+          it 'setting log output as a file converts to argument' do
+            service = described_class.chrome(log: '/path/to/log.txt')
+
+            expect(service.log).to be_nil
+            expect(service.args).to eq ['--log-path=/path/to/log.txt']
+          end
+
+          it 'uses provided args' do
+            service = described_class.new(args: ['--foo', '--bar'])
+
+            expect(service.extra_args).to eq ['--foo', '--bar']
+          end
+
+          context 'when SE_DEBUG is set' do
+            around do |example|
+              ENV['SE_DEBUG'] = '1'
+              example.run
+            ensure
+              ENV.delete('SE_DEBUG')
+            end
+
+            it 'adds --verbose flag' do
+              service = described_class.new
+
+              expect(service.extra_args).to include('--verbose')
+            end
+
+            it 'removes conflicting --log-level args' do
+              service = described_class.new(args: ['--log-level=INFO'])
+
+              expect(service.extra_args).to include('--verbose')
+              expect(service.extra_args).not_to include('--log-level=INFO')
+            end
+
+            it 'removes conflicting --silent args' do
+              service = described_class.new(args: ['--silent'])
+
+              expect(service.extra_args).to include('--verbose')
+              expect(service.extra_args).not_to include('--silent')
+            end
+          end
+        end
+
+        context 'when initializing driver' do
+          let(:driver) { Edge::Driver }
+          let(:finder) { instance_double(DriverFinder, browser_path?: false, driver_path: '/path/to/driver') }
+          let(:service) do
+            instance_double(described_class, launch: service_manager, executable_path: nil, 'executable_path=': nil,
+                                             class: described_class)
+          end
+          let(:service_manager) { instance_double(ServiceManager, uri: 'http://example.com') }
+          let(:bridge) { instance_double(Remote::Bridge, quit: nil, create_session: {}) }
+
+          before do
+            allow(Remote::Bridge).to receive(:new).and_return(bridge)
+            allow(bridge).to receive(:browser).and_return(:msedge)
+          end
+
+          it 'is not created when :url is provided' do
+            allow(described_class).to receive(:new)
+
+            expect {
+              driver.new(url: 'http://example.com:4321')
+            }.to raise_error(ArgumentError, "Can't initialize Selenium::WebDriver::Edge::Driver with :url")
+
+            expect(described_class).not_to have_received(:new)
+          end
+
+          it 'is created when :url is not provided' do
+            allow(DriverFinder).to receive(:new).and_return(finder)
+            allow(described_class).to receive(:new).and_return(service)
+
+            driver.new
+            expect(described_class).to have_received(:new).with(no_args)
+          end
+
+          it 'accepts :service without creating a new instance' do
+            allow(DriverFinder).to receive(:new).and_return(finder)
+            allow(described_class).to receive(:new)
+
+            driver.new(service: service)
+            expect(described_class).not_to have_received(:new)
+          end
+
+          it 'setting log output as a file converts to argument' do
+            service = described_class.chrome(log: '/path/to/log.txt')
+
+            expect(service.log).to be_nil
+            expect(service.args).to eq ['--log-path=/path/to/log.txt']
+          end
+
+          context 'with a path env variable' do
+            let(:service) { described_class.new }
+            let(:service_path) { "/path/to/#{Service::EXECUTABLE}" }
+
+            before do
+              ENV['SE_EDGEDRIVER'] = service_path
+            end
+
+            after { ENV.delete('SE_EDGEDRIVER') }
+
+            it 'uses the path from the environment' do
+              expect(service.executable_path).to match(/edgedriver/)
+            end
+
+            it 'updates the path after setting the environment variable' do
+              ENV['SE_EDGEDRIVER'] = '/foo/bar'
+              service.executable_path = service_path
+
+              expect(service.executable_path).to match(/edgedriver/)
+            end
+          end
+        end
       end
-
-      describe '#new' do
-        it 'uses default path and port' do
-          allow(Platform).to receive(:find_binary).and_return(service_path)
-
-          service = Service.edge
-
-          expect(service.executable_path).to include Edge::Service::EXECUTABLE
-          expected_port = Edge::Service::DEFAULT_PORT
-          expect(service.uri.to_s).to eq "http://#{Platform.localhost}:#{expected_port}"
-        end
-
-        it 'uses provided path and port' do
-          path = 'foo'
-          port = 5678
-
-          service = Service.edge(path: path, port: port)
-
-          expect(service.executable_path).to eq path
-          expect(service.uri.to_s).to eq "http://#{Platform.localhost}:#{port}"
-        end
-
-        it 'allows #driver_path= with String value' do
-          path = '/path/to/driver'
-          Edge::Service.driver_path = path
-
-          service = Service.edge
-
-          expect(service.executable_path).to eq path
-        end
-
-        it 'allows #driver_path= with Proc value' do
-          path = '/path/to/driver'
-          proc = proc { path }
-          Edge::Service.driver_path = proc
-
-          service = Service.edge
-
-          expect(service.executable_path).to eq path
-        end
-
-        it 'accepts Edge#driver_path= but throws deprecation notice' do
-          path = '/path/to/driver'
-          expect {
-            Selenium::WebDriver::Edge.driver_path = path
-          }.to output(/WARN Selenium \[DEPRECATION\] Selenium::WebDriver::Edge#driver_path=/).to_stdout_from_any_process
-
-          expect {
-            expect(Selenium::WebDriver::Edge.driver_path).to eq path
-          }.to output(/WARN Selenium \[DEPRECATION\] Selenium::WebDriver::Edge#driver_path/).to_stdout_from_any_process
-
-          service = Service.edge
-
-          expect(service.executable_path).to eq path
-        end
-
-        it 'does not create args by default' do
-          allow(Platform).to receive(:find_binary).and_return(service_path)
-
-          service = Service.edge
-
-          expect(service.instance_variable_get('@extra_args')).to be_empty
-        end
-
-        it 'uses provided args' do
-          allow(Platform).to receive(:find_binary).and_return(service_path)
-
-          service = Service.edge(args: ['--foo', '--bar'])
-
-          expect(service.instance_variable_get('@extra_args')).to eq ['--foo', '--bar']
-        end
-
-        # This is deprecated behavior
-        it 'uses args when passed in as a Hash' do
-          allow(Platform).to receive(:find_binary).and_return(service_path)
-
-          service = Service.edge(args: {host: 'myhost',
-                                        silent: true})
-
-          expect(service.instance_variable_get('@extra_args')).to eq ['--host=myhost', '--silent']
-        end
-      end
-    end
-
-    module EdgeHtml
-      describe Driver do
-        let(:service) { instance_double(Service, start: true, uri: 'http://example.com') }
-        let(:bridge) { instance_double(Remote::Bridge, quit: nil, create_session: {}) }
-
-        before do
-          allow(Remote::Bridge).to receive(:new).and_return(bridge)
-        end
-
-        it 'is not created when :url is provided' do
-          expect(Service).not_to receive(:new)
-
-          described_class.new(url: 'http://example.com:4321')
-        end
-
-        it 'is created when :url is not provided' do
-          expect(Service).to receive(:new).and_return(service)
-
-          described_class.new
-        end
-
-        it 'accepts :driver_path but throws deprecation notice' do
-          driver_path = '/path/to/driver'
-
-          expect(Service).to receive(:new).with(path: driver_path,
-                                                port: nil,
-                                                args: nil).and_return(service)
-
-          expect {
-            described_class.new(driver_path: driver_path)
-          }.to output(/WARN Selenium \[DEPRECATION\] :driver_path/).to_stdout_from_any_process
-        end
-
-        it 'accepts :port but throws deprecation notice' do
-          driver_port = 1234
-
-          expect(Service).to receive(:new).with(path: nil,
-                                                port: driver_port,
-                                                args: nil).and_return(service)
-
-          expect {
-            described_class.new(port: driver_port)
-          }.to output(/WARN Selenium \[DEPRECATION\] :port/).to_stdout_from_any_process
-        end
-
-        it 'accepts :driver_opts but throws deprecation notice' do
-          driver_opts = {foo: 'bar',
-                         bar: ['--foo', '--bar']}
-
-          expect(Service).to receive(:new).with(path: nil,
-                                                port: nil,
-                                                args: driver_opts).and_return(service)
-
-          expect {
-            described_class.new(driver_opts: driver_opts)
-          }.to output(/WARN Selenium \[DEPRECATION\] :driver_opts/).to_stdout_from_any_process
-        end
-
-        it 'accepts :service without creating a new instance' do
-          expect(Service).not_to receive(:new)
-
-          described_class.new(service: service)
-        end
-      end
-    end
+    end # Edge
   end # WebDriver
 end # Selenium

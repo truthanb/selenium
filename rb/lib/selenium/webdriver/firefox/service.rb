@@ -20,31 +20,38 @@
 module Selenium
   module WebDriver
     module Firefox
-      #
-      # @api private
-      #
-
       class Service < WebDriver::Service
         DEFAULT_PORT = 4444
         EXECUTABLE = 'geckodriver'
-        MISSING_TEXT = <<~ERROR
-          Unable to find Mozilla geckodriver. Please download the server from
-          https://github.com/mozilla/geckodriver/releases and place it somewhere on your PATH.
-          More info at https://developer.mozilla.org/en-US/docs/Mozilla/QA/Marionette/WebDriver.
-        ERROR
         SHUTDOWN_SUPPORTED = false
+        DRIVER_PATH_ENV_KEY = 'SE_GECKODRIVER'
+
+        def initialize(args: nil, **)
+          args = Array(args.dup)
+          unless args.any? { |arg| arg.include?('--connect-existing') || arg.include?('--websocket-port') }
+            args << '--websocket-port'
+            args << '0'
+          end
+
+          if ENV.key?('SE_DEBUG')
+            remove_log_args(args)
+            args << '-v'
+          end
+
+          super
+        end
 
         private
 
-        # Note: This processing is deprecated
-        def extract_service_args(driver_opts)
-          driver_args = super
-          driver_opts = driver_opts.dup
-          driver_args << "--binary=#{driver_opts[:binary]}" if driver_opts.key?(:binary)
-          driver_args << "--log=#{driver_opts[:log]}" if driver_opts.key?(:log)
-          driver_args << "--marionette-port=#{driver_opts[:marionette_port]}" if driver_opts.key?(:marionette_port)
-          driver_args << "--host=#{driver_opts[:host]}" if driver_opts.key?(:host)
-          driver_args
+        def remove_log_args(args)
+          if (index = args.index('--log'))
+            args.delete_at(index) # delete '--log'
+            args.delete_at(index) if args[index] && !args[index].start_with?('-') # delete value if present
+            warn_driver_log_override
+          elsif (index = args.index { |arg| arg.start_with?('--log=') })
+            args.delete_at(index)
+            warn_driver_log_override
+          end
         end
       end # Service
     end # Firefox

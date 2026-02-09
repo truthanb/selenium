@@ -20,33 +20,20 @@
 module Selenium
   module WebDriver
     module IE
-      #
-      # @api private
-      #
-
       class Service < WebDriver::Service
         DEFAULT_PORT = 5555
         EXECUTABLE = 'IEDriverServer'
-        MISSING_TEXT = <<~ERROR
-          Unable to find IEDriverServer. Please download the server from
-          http://selenium-release.storage.googleapis.com/index.html and place it somewhere on your PATH.
-          More info at https://github.com/SeleniumHQ/selenium/wiki/InternetExplorerDriver.
-        ERROR
         SHUTDOWN_SUPPORTED = true
+        DRIVER_PATH_ENV_KEY = 'SE_IEDRIVER'
 
-        private
+        def initialize(args: nil, **)
+          if ENV.key?('SE_DEBUG')
+            args = Array(args.dup)
+            warn_driver_log_override if args.reject! { |arg| arg.include?('log-level') || arg.include?('silent') }
+            args << '--log-level=DEBUG'
+          end
 
-        # Note: This processing is deprecated
-        def extract_service_args(driver_opts)
-          driver_args = super
-          driver_opts = driver_opts.dup
-          driver_args << "--log-level=#{driver_opts[:log_level].to_s.upcase}" if driver_opts.key?(:log_level)
-          driver_args << "--log-file=#{driver_opts[:log_file]}" if driver_opts.key?(:log_file)
-          driver_args << "--implementation=#{driver_opts[:implementation].to_s.upcase}" if driver_opts.key?(:implementation)
-          driver_args << "--host=#{driver_opts[:host]}" if driver_opts.key?(:host)
-          driver_args << "--extract_path=#{driver_opts[:extract_path]}" if driver_opts.key?(:extract_path)
-          driver_args << "--silent" if driver_opts[:silent] == true
-          driver_args
+          super
         end
       end # Server
     end # IE

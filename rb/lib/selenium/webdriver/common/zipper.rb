@@ -18,6 +18,7 @@
 # under the License.
 
 require 'zip'
+require 'zip/version' # Not required automatically
 require 'tempfile'
 require 'find'
 require 'base64'
@@ -30,6 +31,7 @@ module Selenium
 
     module Zipper
       EXTENSIONS = %w[.zip .xpi].freeze
+      RUBYZIP_V3 = Zip::VERSION >= '3.0.0'
 
       class << self
         def unzip(path)
@@ -41,8 +43,12 @@ module Selenium
               to      = File.join(destination, entry.name)
               dirname = File.dirname(to)
 
-              FileUtils.mkdir_p dirname unless File.exist? dirname
-              zip.extract(entry, to)
+              FileUtils.mkdir_p dirname
+              if RUBYZIP_V3
+                zip.extract(entry, entry.name, destination_directory: destination)
+              else
+                zip.extract(entry, to)
+              end
             end
           end
 
@@ -72,16 +78,14 @@ module Selenium
         private
 
         def with_tmp_zip(&blk)
-          # can't use Tempfile here since it doesn't support File::BINARY mode on 1.8
-          # can't use Dir.mktmpdir(&blk) because of http://jira.codehaus.org/browse/JRUBY-4082
-          tmp_dir = Dir.mktmpdir
-          zip_path = File.join(tmp_dir, 'webdriver-zip')
-
-          begin
-            Zip::File.open(zip_path, Zip::File::CREATE, &blk)
-          ensure
-            FileUtils.rm_rf tmp_dir
-            FileUtils.rm_rf zip_path
+          # Don't use Tempfile since it lacks rb_file_s_rename permission on Windows.
+          Dir.mktmpdir do |tmp_dir|
+            zip_path = File.join(tmp_dir, 'webdriver-zip')
+            if RUBYZIP_V3
+              Zip::File.open(zip_path, create: true, &blk)
+            else
+              Zip::File.open(zip_path, Zip::File::CREATE, &blk)
+            end
           end
         end
 

@@ -23,17 +23,35 @@ require 'rspec'
 
 require 'selenium-webdriver'
 require_relative 'spec_support'
+require_relative '../../../rspec_matchers'
 
-include Selenium # rubocop:disable Style/MixinUsage
+include Selenium
 
 GlobalTestEnv = WebDriver::SpecSupport::TestEnvironment.new
 
+class SeleniumTestListener
+  def example_finished(notification)
+    exception = notification.example.exception
+    assertion_failed = exception &&
+                       (exception.is_a?(RSpec::Expectations::ExpectationNotMetError) ||
+                        exception.is_a?(RSpec::Core::Pending::PendingExampleFixedError))
+    pending_exception = exception.nil? && notification.example.pending && !notification.example.skip
+
+    GlobalTestEnv.reset_driver! if (exception && !assertion_failed) || pending_exception
+  end
+end
+
 RSpec.configure do |c|
+  c.define_derived_metadata do |meta|
+    meta[:aggregate_failures] = true
+  end
+
+  c.reporter.register_listener(SeleniumTestListener.new, :example_finished)
+
   c.include(WebDriver::SpecSupport::Helpers)
 
   c.before(:suite) do
-    $DEBUG ||= ENV['DEBUG'] == 'true'
-    GlobalTestEnv.remote_server.start if GlobalTestEnv.driver == :remote
+    GlobalTestEnv.ensure_grid if GlobalTestEnv.driver == :remote && ENV['WD_REMOTE_URL'].nil?
     GlobalTestEnv.print_env
   end
 
@@ -41,20 +59,23 @@ RSpec.configure do |c|
     GlobalTestEnv.quit_driver
   end
 
-  c.filter_run focus: true if ENV['focus']
+  c.filter_run_when_matching :focus
+  c.run_all_when_everything_filtered = true
+  c.default_formatter = c.files_to_run.count > 1 ? 'progress' : 'doc'
 
   c.before do |example|
-    guards = WebDriver::SpecSupport::Guards.new(example)
-    if guards.exclude.any?
-      skip 'Bug Prevents Execution.'
-    elsif guards.except.satisfied.any? || guards.only.unsatisfied.any?
-      ENV['SKIP_PENDING'] ? skip('Skip Guarded Spec') : pending('Guarded.')
-    end
-  end
+    guards = WebDriver::Support::Guards.new(example, bug_tracker: 'https://github.com/SeleniumHQ/selenium/issues')
+    guards.add_condition(:driver, GlobalTestEnv.driver)
+    guards.add_condition(:browser, GlobalTestEnv.browser)
+    guards.add_condition(:ci, WebDriver::Platform.ci)
+    guards.add_condition(:platform, WebDriver::Platform.os)
+    guards.add_condition(:headless, !ENV['HEADLESS'].nil?)
+    guards.add_condition(:bidi, !ENV['WEBDRIVER_BIDI'].nil?)
+    guards.add_condition(:rbe, GlobalTestEnv.rbe?)
+    guards.add_condition(:version, GlobalTestEnv.browser_version)
 
-  c.after do |example|
-    result = example.execution_result
-    reset_driver! if result.exception || result.pending_exception
+    results = guards.disposition
+    send(*results) if results
   end
 end
 
